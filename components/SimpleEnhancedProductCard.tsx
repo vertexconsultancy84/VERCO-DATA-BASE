@@ -13,7 +13,7 @@ interface Product {
   id: string;
   title: string;
   description: string;
-  price?: number;
+  price?: number; // undefined if not set
   latitude?: number;
   longitude?: number;
   createdAt: string | Date;
@@ -47,28 +47,24 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  // Haversine formula to calculate distance between two points
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371; // Earth's radius in kilometers
+    const R = 6371; // Earth's radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.sin(dLat/2) ** 2 +
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
+      Math.sin(dLon/2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c;
-    return distance;
+    return R * c;
   };
 
   const handleDelete = async (productId: string) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
-
     setDeleting(productId);
     const result = await deleteProduct(productId);
 
     if (result.success) {
-      // Refresh the page to show updated product list
       window.location.reload();
     } else {
       alert(result.message);
@@ -76,7 +72,6 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
     setDeleting(null);
   };
 
-  // Get user's current location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -86,114 +81,66 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
             lng: position.coords.longitude,
           });
         },
-        (error) => {
-          console.error("Error getting location:", error);
-        }
+        (error) => console.error("Error getting location:", error)
       );
     }
   }, []);
 
   const formatPrice = (price?: number) => {
-    if (!price) return "Price not set";
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
+    if (price == null) return "Price not set";
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
   };
 
   const formatDate = (dateString: string | Date) => {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const truncateDescription = (description: string, maxLength: number = 100) => {
-    if (description.length <= maxLength) return description;
-    return description.substring(0, maxLength) + "...";
-  };
+  const truncateDescription = (description: string, maxLength: number = 100) =>
+    description.length <= maxLength ? description : description.substring(0, maxLength) + "...";
 
-  // Calculate distance if user location is available and product has coordinates
-  const distance = userLocation && product.latitude && product.longitude
+  // Fix for TypeScript: distance is number | undefined
+  const distance = userLocation && product.latitude != null && product.longitude != null
     ? calculateDistance(userLocation.lat, userLocation.lng, product.latitude, product.longitude)
-    : null;
+    : undefined;
 
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 hover:border-orange-200">
       <CardContent className="p-0">
         {/* Product Image */}
         <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
-          {(() => {
-            // Try new media structure first
-            if (product.media && product.media.mainImage) {
-              return (
-                <Image
-                  src={product.media.mainImage}
-                  alt={product.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              );
-            }
-            if (product.media && product.media.images && product.media.images.length > 0) {
-              return (
-                <Image
-                  src={product.media.images[0]}
-                  alt={product.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              );
-            }
-            
-            // Fallback to legacy fields
-            if (product.image || product.mainImage || (product.images && product.images.length > 0)) {
-              return (
-                <Image
-                  src={product.image || product.mainImage || product.images![0]!}
-                  alt={product.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              );
-            }
-            
-            // No image available
-            return (
-              <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                <div className="text-gray-400 text-center p-4">
-                  <div className="text-3xl mb-2">📦</div>
-                  <div className="text-sm">No Image Available</div>
-                </div>
+          {product.media?.mainImage ? (
+            <Image src={product.media.mainImage} alt={product.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+          ) : product.media?.images?.length ? (
+            <Image src={product.media.images[0]} alt={product.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+          ) : product.image || product.mainImage || product.images?.length ? (
+            <Image src={product.image ?? product.mainImage ?? product.images![0]!} alt={product.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-200">
+              <div className="text-gray-400 text-center p-4">
+                <div className="text-3xl mb-2">📦</div>
+                <div className="text-sm">No Image Available</div>
               </div>
-            );
-          })()}
+            </div>
+          )}
         </div>
 
         {/* Product Info */}
         <div className="p-4">
           <div className="flex justify-between items-start mb-2">
-            <h3 className="font-semibold text-lg text-gray-900 line-clamp-2 flex-1">
-              {product.title}
-            </h3>
-            <Badge variant="secondary" className="text-sm">
-              {formatPrice(product.price)}
-            </Badge>
+            <h3 className="font-semibold text-lg text-gray-900 line-clamp-2 flex-1">{product.title}</h3>
+            <Badge variant="secondary" className="text-sm">{formatPrice(product.price)}</Badge>
           </div>
 
-          <p className="text-gray-600 text-sm mb-3 line-clamp-3 leading-relaxed">
-            {truncateDescription(product.description)}
-          </p>
+          <p className="text-gray-600 text-sm mb-3 line-clamp-3 leading-relaxed">{truncateDescription(product.description)}</p>
 
           {/* Location & Distance */}
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
             <MapPin className="h-4 w-4" />
             <span>
-              {distance !== null
+              {distance !== undefined
                 ? `${distance.toFixed(1)} km away`
-                : product.latitude && product.longitude
+                : product.latitude != null && product.longitude != null
                   ? `${product.latitude.toFixed(4)}, ${product.longitude.toFixed(4)}`
                   : "Location not specified"
               }
@@ -201,17 +148,13 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
           </div>
 
           {/* Distance */}
-          {distance !== null && (
+          {distance !== undefined && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4 text-blue-600" />
                 <div>
-                  <p className="text-xs text-blue-600 font-medium">
-                    Distance from you
-                  </p>
-                  <p className="text-lg font-bold text-blue-900">
-                    {distance} km
-                  </p>
+                  <p className="text-xs text-blue-600 font-medium">Distance from you</p>
+                  <p className="text-lg font-bold text-blue-900">{distance.toFixed(1)} km</p>
                 </div>
               </div>
             </div>
@@ -219,31 +162,22 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
 
           {/* User Info */}
           <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-gray-500">
-              Listed by {product.user.name}
-            </div>
-            <div className="text-sm text-gray-500">
-              {formatDate(product.createdAt)}
-            </div>
+            <div className="text-sm text-gray-500">Listed by {product.user.name}</div>
+            <div className="text-sm text-gray-500">{formatDate(product.createdAt)}</div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex gap-2">
             <Link href={`/product-details?id=${product.id}`} className="flex-1">
               <Button variant="outline" size="sm" className="w-full">
-                <Eye className="h-4 w-4 mr-2" />
-                View Details
+                <Eye className="h-4 w-4 mr-2" /> View Details
               </Button>
             </Link>
 
-            {/* Edit/Delete buttons for owners or admins */}
             {(currentUser && (product.user.id === currentUser.id || isAdmin)) && (
               <div className="flex gap-2">
                 <Link href={`/user/edit-product?id=${product.id}`}>
-                  <Button variant="outline" size="sm">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
+                  <Button variant="outline" size="sm"><Edit className="h-4 w-4 mr-2" /> Edit</Button>
                 </Link>
                 <Button 
                   variant="destructive" 
