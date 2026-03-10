@@ -99,9 +99,9 @@ export default function ProductDetailPage() {
   }, [productId, userLocation]);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("rw-RW", {
       style: "currency",
-      currency: "USD",
+      currency: "RWF",
     }).format(price);
   };
 

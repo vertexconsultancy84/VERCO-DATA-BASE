@@ -92,7 +92,7 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
 
   const formatPrice = (price?: number | null) => {
     if (price == null) return "Price not set";
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
+    return new Intl.NumberFormat('rw-RW', { style: 'currency', currency: 'RWF' }).format(price);
   };
 
   const formatDate = (dateString: string | Date) => {

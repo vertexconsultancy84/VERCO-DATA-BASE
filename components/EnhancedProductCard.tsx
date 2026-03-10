@@ -81,9 +81,9 @@ export default function EnhancedProductCard({ product, currentUser, isAdmin = fa
   }, []);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('rw-RW', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'RWF',
     }).format(price);
   };
 

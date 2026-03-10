@@ -349,10 +349,10 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess }: SimpleEnh
 
       {/* Location */}
       <div>
-        <Label>Product Location (Optional)</Label>
+        <Label>Product Location (Optional), 📍Click On "Use My Location" Button below to locate your product on Google Maps.</Label>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="latitude">Latitude</Label>
+            <Label htmlFor="latitude">🗺️</Label>
             <Input
               id="latitude"
               name="latitude"
@@ -363,7 +363,7 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess }: SimpleEnh
             />
           </div>
           <div>
-            <Label htmlFor="longitude">Longitude</Label>
+            <Label htmlFor="longitude">🗺️</Label>
             <Input
               id="longitude"
               name="longitude"
