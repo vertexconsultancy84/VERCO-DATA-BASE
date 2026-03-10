@@ -127,10 +127,66 @@ export default function ProductUploadForm() {
           </div>
         </div>
 
+        {/* Location Details Section */}
+        <div className="border-t pt-5">
+          <Label className="text-base font-semibold mb-3 block">Product Location Details</Label>
+          <p className="text-sm text-gray-600 mb-4">Enter the location details where your product is located</p>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="province">Province (Optional)</Label>
+              <Input
+                id="province"
+                name="province"
+                type="text"
+                placeholder="e.g., Kigali City"
+                disabled={isPending}
+                className="w-full h-11 px-4 border text-base border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F17105] focus:border-transparent"
+              />
+            </div>
+            <div>
+              <Label htmlFor="district">District (Optional)</Label>
+              <Input
+                id="district"
+                name="district"
+                type="text"
+                placeholder="e.g., Nyarugenge"
+                disabled={isPending}
+                className="w-full h-11 px-4 border text-base border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F17105] focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <Label htmlFor="sector">Sector (Optional)</Label>
+              <Input
+                id="sector"
+                name="sector"
+                type="text"
+                placeholder="e.g., Kimihurura"
+                disabled={isPending}
+                className="w-full h-11 px-4 border text-base border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F17105] focus:border-transparent"
+              />
+            </div>
+            <div>
+              <Label htmlFor="village">Village (Optional)</Label>
+              <Input
+                id="village"
+                name="village"
+                type="text"
+                placeholder="e.g., Kacyiru"
+                disabled={isPending}
+                className="w-full h-11 px-4 border text-base border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F17105] focus:border-transparent"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Location Section */}
         <div className="border-t pt-5">
           <div className="flex items-center justify-between mb-3">
-            <Label className="text-base font-semibold">Product Location</Label>
+            <Label className="text-base font-semibold">Click the button below to locate your products on Google Maps.</Label>
             <Button
               type="button"
               variant="outline"
@@ -140,7 +196,7 @@ export default function ProductUploadForm() {
               className="flex items-center gap-2"
             >
               <MapPin className="w-4 h-4" />
-              Use My Location
+              Google Map Location
             </Button>
           </div>
           

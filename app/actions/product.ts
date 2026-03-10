@@ -267,6 +267,7 @@ export async function deleteProduct(productId: string) {
 }
 
 export async function getAllPublishedProducts() {
+  console.log("=== GET ALL PUBLISHED PRODUCTS DEBUG ===");
   try {
     // For MongoDB, we need to fetch all products and filter in JavaScript
     // since $queryRaw is not supported for MongoDB provider
@@ -286,11 +287,15 @@ export async function getAllPublishedProducts() {
       ],
     });
 
+    console.log("Raw products from database:", products.length);
+
     // Filter out hidden products in JavaScript (since MongoDB doesn't support raw queries)
     const visibleProducts = products.filter((product: any) => {
       // If hidden field doesn't exist or is false, show the product
       return !product.hidden || product.hidden === false;
     });
+
+    console.log("Visible products after filtering:", visibleProducts.length);
 
     // Fetch media for each product from ProductMedia collection
     const productsWithMedia = await Promise.all(
@@ -350,7 +355,22 @@ export async function updateProduct(productId: string, formData: FormData) {
   const price = formData.get("price") as string;
   const latitude = formData.get("latitude") as string;
   const longitude = formData.get("longitude") as string;
+  const province = formData.get("province") as string;
+  const district = formData.get("district") as string;
+  const sector = formData.get("sector") as string;
+  const village = formData.get("village") as string;
   const available = formData.get("available") as string;
+
+  // Debug logging
+  console.log("=== UPDATE PRODUCT ACTION DEBUG ===");
+  console.log("Product ID:", productId);
+  console.log("Title:", title);
+  console.log("Province:", province);
+  console.log("District:", district);
+  console.log("Sector:", sector);
+  console.log("Village:", village);
+  console.log("Available:", available);
+  console.log("=====================================");
 
   if (!title || !description) {
     return { success: false, message: "Title and description are required." };
@@ -413,6 +433,23 @@ export async function updateProduct(productId: string, formData: FormData) {
       updateData.latitude = parsedLatitude;
       updateData.longitude = parsedLongitude;
     }
+    if (province) {
+      updateData.province = province;
+    }
+    if (district) {
+      updateData.district = district;
+    }
+    if (sector) {
+      updateData.sector = sector;
+    }
+    if (village) {
+      updateData.village = village;
+    }
+
+    // Debug logging
+    console.log("=== UPDATE DATA DEBUG ===");
+    console.log("Final updateData:", JSON.stringify(updateData, null, 2));
+    console.log("=========================");
 
     // Update product
     const updatedProduct = await prisma.product.update({

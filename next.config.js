@@ -15,6 +15,9 @@ const nextConfig = {
       },
     ],
   },
+  turbopack: {
+    enabled: false, // Disable Turbopack to avoid memory issues
+  },
 };
 
 module.exports = nextConfig;

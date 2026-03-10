@@ -5,7 +5,21 @@ import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
 import { Package, Star, Users } from "lucide-react";
 
 export default async function ViewProductsPage() {
+  console.log("=== VIEW PRODUCTS PAGE DEBUG ===");
   const products = await getAllPublishedProducts();
+  
+  console.log("Products fetched:", products.length);
+  if (products.length > 0) {
+    console.log("Sample product with location:", {
+      id: products[0].id,
+      title: products[0].title,
+      province: products[0].province,
+      district: products[0].district,
+      sector: products[0].sector,
+      village: products[0].village
+    });
+  }
+  console.log("=================================");
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30">

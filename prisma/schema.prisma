@@ -61,6 +61,10 @@ model Product {
   price         Float?   // Optional price field
   latitude      Float?   // Optional latitude for location
   longitude     Float?   // Optional longitude for location
+  province      String?  // Optional province for location
+  district      String?  // Optional district for location
+  sector        String?  // Optional sector for location
+  village       String?  // Optional village for location
   available     Boolean  @default(true) // Product availability status
   hidden        Boolean  @default(false) // Admin can hide products from public view
   contactNumber String?  // Optional contact number for this product

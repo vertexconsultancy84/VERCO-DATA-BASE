@@ -386,6 +386,58 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess }: SimpleEnh
         </Button>
       </div>
 
+      {/* Location Details Section */}
+      <div>
+        <Label>Product Location Details (Optional)</Label>
+        <p className="text-sm text-gray-600 mb-4">Enter the location details where your product is located</p>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="province">Province</Label>
+            <Input
+              id="province"
+              name="province"
+              type="text"
+              placeholder="e.g., Kigali City"
+              className="w-full"
+            />
+          </div>
+          <div>
+            <Label htmlFor="district">District</Label>
+            <Input
+              id="district"
+              name="district"
+              type="text"
+              placeholder="e.g., Nyarugenge"
+              className="w-full"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div>
+            <Label htmlFor="sector">Sector</Label>
+            <Input
+              id="sector"
+              name="sector"
+              type="text"
+              placeholder="e.g., Kimihurura"
+              className="w-full"
+            />
+          </div>
+          <div>
+            <Label htmlFor="village">Village</Label>
+            <Input
+              id="village"
+              name="village"
+              type="text"
+              placeholder="e.g., Kacyiru"
+              className="w-full"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Availability Section */}
       <div>
         <Label>Product Availability</Label>

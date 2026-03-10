@@ -16,6 +16,10 @@ interface Product {
   price: number | null | undefined;
   latitude?: number | null;
   longitude?: number | null;
+  province?: string | null;
+  district?: string | null;
+  sector?: string | null;
+  village?: string | null;
   createdAt: string | Date;
   distance?: number;
   user: {
@@ -142,10 +146,30 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
                 ? `${distance.toFixed(1)} km away`
                 : product.latitude != null && product.longitude != null
                   ? `${product.latitude.toFixed(4)}, ${product.longitude.toFixed(4)}`
+                  : product.province || product.district || product.sector || product.village
+                  ? `${product.province ? product.province + ', ' : ''}${product.district ? product.district + ', ' : ''}${product.sector ? product.sector + ', ' : ''}${product.village || ''}`.replace(/, $/, '')
                   : "Location not specified"
               }
             </span>
           </div>
+
+          {/* Detailed Location */}
+          {(product.province || product.district || product.sector || product.village) && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
+              <div className="flex items-center space-x-2">
+                <MapPin className="h-4 w-4 text-green-600" />
+                <div>
+                  <p className="text-xs text-green-600 font-medium">Product Location</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {product.province && `${product.province}, `}
+                    {product.district && `${product.district}, `}
+                    {product.sector && `${product.sector}, `}
+                    {product.village && product.village}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Distance */}
           {distance !== undefined && (

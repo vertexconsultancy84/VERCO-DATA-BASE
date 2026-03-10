@@ -19,6 +19,10 @@ interface Product {
   price?: number;
   latitude?: number;
   longitude?: number;
+  province?: string;
+  district?: string;
+  sector?: string;
+  village?: string;
   available?: boolean;
   media?: {
     images: string[];
@@ -77,6 +81,15 @@ function EditProductContent() {
 
     const formData = new FormData(e.currentTarget);
     formData.append("available", isAvailable ? "true" : "false");
+
+    // Debug logging
+    console.log("=== EDIT FORM SUBMISSION DEBUG ===");
+    console.log("Product ID:", productId);
+    console.log("FormData contents:");
+    for (let [key, value] of formData.entries()) {
+      console.log(`${key}: ${value}`);
+    }
+    console.log("=====================================");
 
     try {
       const result = await updateProduct(productId!, formData);
@@ -231,6 +244,54 @@ function EditProductContent() {
                       step="any"
                       defaultValue={product.longitude || ""}
                       placeholder="e.g., -74.0060"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="province">Province</Label>
+                    <Input
+                      id="province"
+                      name="province"
+                      type="text"
+                      defaultValue={product.province || ""}
+                      placeholder="e.g., Kigali City"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="district">District</Label>
+                    <Input
+                      id="district"
+                      name="district"
+                      type="text"
+                      defaultValue={product.district || ""}
+                      placeholder="e.g., Nyarugenge"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="sector">Sector</Label>
+                    <Input
+                      id="sector"
+                      name="sector"
+                      type="text"
+                      defaultValue={product.sector || ""}
+                      placeholder="e.g., Kimihurura"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="village">Village</Label>
+                    <Input
+                      id="village"
+                      name="village"
+                      type="text"
+                      defaultValue={product.village || ""}
+                      placeholder="e.g., Kacyiru"
                       disabled={isSubmitting}
                     />
                   </div>

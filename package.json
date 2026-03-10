@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev-stable": "set NODE_OPTIONS=--max-old-space-size=4096 && next dev",
     "build": "next build",
     "postinstall": "prisma generate",
     "start": "next start",

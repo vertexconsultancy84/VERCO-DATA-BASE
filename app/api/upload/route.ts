@@ -27,6 +27,10 @@ export async function POST(request: NextRequest) {
     const price = formData.get("price") as string;
     const latitude = formData.get("latitude") as string;
     const longitude = formData.get("longitude") as string;
+    const province = formData.get("province") as string;
+    const district = formData.get("district") as string;
+    const sector = formData.get("sector") as string;
+    const village = formData.get("village") as string;
     const available = formData.get("available") as string;
     const contactNumber = formData.get("contactNumber") as string;
     const whatsappNumber = formData.get("whatsappNumber") as string;
@@ -120,6 +124,18 @@ export async function POST(request: NextRequest) {
     if (parsedLatitude !== null && parsedLongitude !== null) {
       productData.latitude = parsedLatitude;
       productData.longitude = parsedLongitude;
+    }
+    if (province) {
+      productData.province = province;
+    }
+    if (district) {
+      productData.district = district;
+    }
+    if (sector) {
+      productData.sector = sector;
+    }
+    if (village) {
+      productData.village = village;
     }
     if (contactNumber) {
       productData.contactNumber = contactNumber;
