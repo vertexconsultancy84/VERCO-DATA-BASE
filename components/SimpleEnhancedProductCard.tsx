@@ -92,12 +92,14 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
 
   const formatPrice = (price?: number | null) => {
     if (price == null) return "Price not set";
-    return new Intl.NumberFormat('rw-RW', { style: 'currency', currency: 'RWF' }).format(price);
+    // Use a simple manual formatter to avoid hydration issues
+    return `RWF ${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   const formatDate = (dateString: string | Date) => {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    // Use consistent date formatting to avoid hydration issues
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   };
 
   const truncateDescription = (description: string, maxLength: number = 100) =>

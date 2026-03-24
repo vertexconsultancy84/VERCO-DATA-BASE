@@ -168,10 +168,7 @@ function ProductDetailContent() {
   }, [productId]);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('rw-RW', {
-      style: 'currency',
-      currency: 'RWF',
-    }).format(price);
+    return `RWF ${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   // Extract coordinates from description if they're embedded there

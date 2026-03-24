@@ -81,10 +81,7 @@ export default function EnhancedProductCard({ product, currentUser, isAdmin = fa
   }, []);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('rw-RW', {
-      style: 'currency',
-      currency: 'RWF',
-    }).format(price);
+    return `RWF ${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -92,6 +89,7 @@ export default function EnhancedProductCard({ product, currentUser, isAdmin = fa
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+      timeZone: 'UTC'
     });
   };
 

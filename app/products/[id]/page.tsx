@@ -99,10 +99,7 @@ export default function ProductDetailPage() {
   }, [productId, userLocation]);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("rw-RW", {
-      style: "currency",
-      currency: "RWF",
-    }).format(price);
+    return `RWF ${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   const formatDate = (date: string) => {
@@ -111,6 +108,7 @@ export default function ProductDetailPage() {
       year: "numeric",
       month: "long",
       day: "numeric",
+      timeZone: 'UTC'
     });
   };
 
