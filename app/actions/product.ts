@@ -266,7 +266,40 @@ export async function deleteProduct(productId: string) {
   }
 }
 
-export async function getAllPublishedProducts() {
+import { revalidatePath } from "next/cache";
+
+// Define Product interface for type safety
+interface Product {
+  id: string;
+  title: string;
+  description: string;
+  price: number | null | undefined;
+  latitude?: number | null;
+  longitude?: number | null;
+  province?: string | null;
+  district?: string | null;
+  sector?: string | null;
+  village?: string | null;
+  available: boolean;
+  hidden?: boolean;
+  contactNumber?: string | null;
+  whatsappNumber?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  media?: {
+    images: string[];
+    videos: string[];
+    mainImage: string | null;
+    mainVideo: string | null;
+  };
+}
+
+export async function getAllPublishedProducts(): Promise<any[]> {
   console.log("=== GET ALL PUBLISHED PRODUCTS DEBUG ===");
   try {
     // For MongoDB, we need to fetch all products and filter in JavaScript

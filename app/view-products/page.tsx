@@ -7,8 +7,39 @@ import Footer from "@/components/Footer";
 import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
 import { Package, Star, Users } from "lucide-react";
 
+// Define the Product interface for this component
+interface ViewProduct {
+  id: string;
+  title: string;
+  description: string;
+  price: number | null | undefined;
+  latitude?: number | null;
+  longitude?: number | null;
+  province?: string | null;
+  district?: string | null;
+  sector?: string | null;
+  village?: string | null;
+  available: boolean;
+  hidden?: boolean;
+  contactNumber?: string | null;
+  whatsappNumber?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  media?: {
+    images: string[];
+    videos: string[];
+    mainImage: string | null;
+    mainVideo: string | null;
+  };
+}
+
 export default function ViewProductsPage() {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
