@@ -2,8 +2,14 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: 10 * 1024 * 1024, // 10MB limit for large file uploads
+      bodySizeLimit: 50 * 1024 * 1024, // 50MB limit for large file uploads
     },
+  },
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+    responseLimit: '50mb',
   },
   images: {
     remotePatterns: [

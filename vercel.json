@@ -3,6 +3,11 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install --legacy-peer-deps",
   "framework": "nextjs",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
   "env": {
     "NODE_OPTIONS": "--max-old-space-size=4096"
   }

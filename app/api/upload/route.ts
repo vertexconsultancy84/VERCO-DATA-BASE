@@ -5,7 +5,17 @@ import { uploadToCloudinary } from "@/lib/cloudinary";
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user session
+    const formData = await request.formData();
+    
+    // Check if the request is too large
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > 50 * 1024 * 1024) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "File size too large. Maximum size is 50MB." 
+      }, { status: 413 });
+    }
+
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get("user_session")?.value;
 
@@ -18,10 +28,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ success: false, message: "User not found." }, { status: 401 });
+      return NextResponse.json({ success: false, message: "User not found. Please login again." }, { status: 401 });
     }
 
-    const formData = await request.formData();
+    // Extract form data
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
     const price = formData.get("price") as string;
