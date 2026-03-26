@@ -35,12 +35,6 @@ export async function POST(request: NextRequest) {
     const contactNumber = formData.get("contactNumber") as string;
     const whatsappNumber = formData.get("whatsappNumber") as string;
 
-    // Debug logging for contact fields
-    console.log("=== UPLOAD API DEBUG ===");
-    console.log("Contact Number:", contactNumber);
-    console.log("WhatsApp Number:", whatsappNumber);
-    console.log("========================");
-
     if (!title || !description) {
       return NextResponse.json({ success: false, message: "Title and description are required." }, { status: 400 });
     }
@@ -143,12 +137,6 @@ export async function POST(request: NextRequest) {
     if (whatsappNumber) {
       productData.whatsappNumber = whatsappNumber;
     }
-
-    console.log("=== PRODUCT DATA BEING SAVED ===");
-    console.log("Complete product data:", productData);
-    console.log("Contact Number in data:", productData.contactNumber);
-    console.log("WhatsApp Number in data:", productData.whatsappNumber);
-    console.log("==============================");
 
     // Create product first
     const product = await prisma.product.create({
