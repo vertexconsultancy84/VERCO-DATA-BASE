@@ -27,6 +27,7 @@ interface Product {
   price?: number;
   latitude?: number;
   longitude?: number;
+  hidden?: boolean;
   createdAt: string;
   updatedAt: string;
   user: {
@@ -291,6 +292,11 @@ export default function RecordsTable() {
                           <div className="text-sm text-gray-600 line-clamp-2">
                             {product.description}
                           </div>
+                          {product.hidden && (
+                            <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800">
+                              Hidden
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -356,25 +362,28 @@ export default function RecordsTable() {
                             <Trash2 className="w-3 h-3" />
                             Delete
                           </Button>
-                          {/* Admin Hide/Unhide buttons */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleHideProduct(product.id)}
-                            className="flex items-center gap-1"
-                          >
-                            <Eye className="w-3 h-3" />
-                            Hide
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleUnhideProduct(product.id)}
-                            className="flex items-center gap-1"
-                          >
-                            <EyeOff className="w-3 h-3" />
-                            Unhide
-                          </Button>
+                          {/* Admin Hide/Unhide buttons - show based on hidden status */}
+                          {!product.hidden ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleHideProduct(product.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Eye className="w-3 h-3" />
+                              Hide
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleUnhideProduct(product.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <EyeOff className="w-3 h-3" />
+                              Unhide
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

@@ -150,8 +150,11 @@ export async function hideProductByAdmin(productId: string) {
       return { success: false, message: "Product not found." };
     }
 
-    // Hide product by setting hidden to true using raw query
-    await (prisma as any).$executeRaw`UPDATE products SET hidden = true WHERE _id = '${productId}'`;
+    // Hide product by setting hidden to true using Prisma
+    await prisma.product.update({
+      where: { id: productId },
+      data: { hidden: true }
+    });
 
     return { 
       success: true, 
@@ -180,8 +183,11 @@ export async function unhideProductByAdmin(productId: string) {
       return { success: false, message: "Product not found." };
     }
 
-    // Unhide product by setting hidden to false using raw query
-    await (prisma as any).$executeRaw`UPDATE products SET hidden = false WHERE _id = '${productId}'`;
+    // Unhide product by setting hidden to false using Prisma
+    await prisma.product.update({
+      where: { id: productId },
+      data: { hidden: false }
+    });
 
     return { 
       success: true, 

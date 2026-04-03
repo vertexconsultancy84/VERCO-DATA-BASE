@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, message: "Invalid video file type." }, { status: 400 });
       }
       
-      if (file.size > 10 * 1024 * 1024) {
-        return NextResponse.json({ success: false, message: "Video size too large. Maximum 10MB per video." }, { status: 400 });
+      if (file.size > 50 * 1024 * 1024) {
+        return NextResponse.json({ success: false, message: "Video size too large. Maximum 50MB per video." }, { status: 400 });
       }
 
       try {

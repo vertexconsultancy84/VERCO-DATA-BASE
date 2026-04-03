@@ -23,6 +23,15 @@ export async function uploadToCloudinary(file: File | Buffer, folder: string = '
         overwrite: true,
       };
 
+      // Add video-specific optimizations
+      if (resourceType === 'video') {
+        uploadOptions.chunk_size = 6000000; // 6MB chunks for large videos
+        uploadOptions.eager = [
+          { format: 'mp4', quality: 'auto' },
+          { format: 'webm', quality: 'auto' }
+        ];
+      }
+
       // Convert File to Buffer if needed
       const handleUpload = async () => {
         let uploadData: Buffer;
@@ -30,7 +39,7 @@ export async function uploadToCloudinary(file: File | Buffer, folder: string = '
         try {
           if (file instanceof File) {
             // Check file size to prevent memory issues
-            const maxSize = 10 * 1024 * 1024; // 10MB limit
+            const maxSize = 50 * 1024 * 1024; // 50MB limit
             if (file.size > maxSize) {
               throw new Error(`File size too large. Maximum size is ${maxSize / 1024 / 1024}MB`);
             }
