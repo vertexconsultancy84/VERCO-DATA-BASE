@@ -19,6 +19,13 @@ enum ContactStatus {
   Resolved
 }
 
+enum ProductCategory {
+  RealEstate
+  Food
+  Rent
+  OtherProducts
+}
+
 model Registration {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   companyName     String
@@ -53,25 +60,26 @@ model User {
 }
 
 model Product {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String   @db.ObjectId
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String         @db.ObjectId
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   title         String
   description    String
-  price         Float?   // Optional price field
-  latitude      Float?   // Optional latitude for location
-  longitude     Float?   // Optional longitude for location
-  province      String?  // Optional province for location
-  district      String?  // Optional district for location
-  sector        String?  // Optional sector for location
-  village       String?  // Optional village for location
-  available     Boolean  @default(true) // Product availability status
-  hidden        Boolean  @default(false) // Admin can hide products from public view
-  contactNumber String?  // Optional contact number for this product
-  whatsappNumber String?  // Optional WhatsApp number for this product
+  category      ProductCategory @default(OtherProducts)
+  price         Float?         // Optional price field
+  latitude      Float?         // Optional latitude for location
+  longitude     Float?         // Optional longitude for location
+  province      String?        // Optional province for location
+  district      String?        // Optional district for location
+  sector        String?        // Optional sector for location
+  village       String?        // Optional village for location
+  available     Boolean        @default(true) // Product availability status
+  hidden        Boolean        @default(false) // Admin can hide products from public view
+  contactNumber String?        // Optional contact number for this product
+  whatsappNumber String?       // Optional WhatsApp number for this product
   media         ProductMedia[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model ProductMedia {

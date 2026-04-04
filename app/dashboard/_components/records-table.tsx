@@ -24,6 +24,7 @@ interface Product {
   id: string;
   title: string;
   description: string;
+  category: string;
   price?: number;
   latitude?: number;
   longitude?: number;
@@ -40,6 +41,20 @@ interface Product {
     videos: string[];
   }[];
 }
+
+const categoryLabels = {
+  RealEstate: "Real Estate",
+  Food: "Food",
+  Rent: "Rent",
+  OtherProducts: "Other Products"
+};
+
+const categoryColors = {
+  RealEstate: "bg-blue-100 text-blue-800",
+  Food: "bg-green-100 text-green-800",
+  Rent: "bg-purple-100 text-purple-800",
+  OtherProducts: "bg-orange-100 text-orange-800"
+};
 
 export default function RecordsTable() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -275,6 +290,7 @@ export default function RecordsTable() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Product</TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead>User Name</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>Location</TableHead>
@@ -298,6 +314,11 @@ export default function RecordsTable() {
                             </Badge>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`text-xs ${categoryColors[product.category as keyof typeof categoryColors]}`}>
+                          {categoryLabels[product.category as keyof typeof categoryLabels]}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">

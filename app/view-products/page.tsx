@@ -5,13 +5,23 @@ import { getAllPublishedProducts } from "@/app/actions/product";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
-import { Package, Star, Users } from "lucide-react";
+import { Package, Star, Users, Filter } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const categoryLabels = {
+  RealEstate: "Real Estate",
+  Food: "Food",
+  Rent: "Rent",
+  OtherProducts: "Other Products"
+};
 
 // Define the Product interface for this component
 interface ViewProduct {
   id: string;
   title: string;
   description: string;
+  category: string;
   price: number | null | undefined;
   latitude?: number | null;
   longitude?: number | null;
@@ -40,11 +50,25 @@ interface ViewProduct {
 
 export default function ViewProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+    filterProducts();
+  }, [products, selectedCategory]);
+
+  const filterProducts = () => {
+    if (selectedCategory === "all") {
+      setFilteredProducts(products);
+    } else {
+      setFilteredProducts(products.filter(product => product.category === selectedCategory));
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -57,6 +81,7 @@ export default function ViewProductsPage() {
         console.log("Sample product with location:", {
           id: fetchedProducts[0].id,
           title: fetchedProducts[0].title,
+          category: fetchedProducts[0].category,
           province: fetchedProducts[0].province,
           district: fetchedProducts[0].district,
           sector: fetchedProducts[0].sector,
@@ -127,17 +152,53 @@ export default function ViewProductsPage() {
         </div>
       </div>
 
+      {/* Category Filter Section */}
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-orange-500" />
+              <h3 className="text-lg font-semibold text-gray-900">Filter by Category</h3>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">
+                Showing {filteredProducts.length} of {products.length} products
+              </span>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="RealEstate">Real Estate</SelectItem>
+                  <SelectItem value="Food">Food</SelectItem>
+                  <SelectItem value="Rent">Rent</SelectItem>
+                  <SelectItem value="OtherProducts">Other Products</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Products Grid */}
       <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        {products.length === 0 ? (
+        {filteredProducts.length === 0 ? (
           <div className="text-center py-12">
             <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Products Yet</h3>
-            <p className="text-gray-600">Be the first to add a product to our marketplace!</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              {selectedCategory === "all" ? "No Products Yet" : "No Products in This Category"}
+            </h3>
+            <p className="text-gray-600">
+              {selectedCategory === "all" 
+                ? "Be the first to add a product to our marketplace!" 
+                : "Try selecting a different category or be the first to add a product here."
+              }
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <SimpleEnhancedProductCard
                 key={product.id}
                 product={product}

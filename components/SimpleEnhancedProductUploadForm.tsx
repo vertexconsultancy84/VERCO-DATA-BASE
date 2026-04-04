@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Upload, X, Image as ImageIcon, Video } from "lucide-react";
 
 interface SimpleEnhancedProductUploadFormProps {
@@ -23,6 +24,7 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess }: SimpleEnh
   const [isAvailable, setIsAvailable] = useState(true); // Default to available
   const [contactNumber, setContactNumber] = useState(""); // Contact number state
   const [whatsappNumber, setWhatsappNumber] = useState(""); // WhatsApp number state
+  const [category, setCategory] = useState("OtherProducts"); // Category state
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -191,6 +193,31 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess }: SimpleEnh
           required
           rows={4}
           className="w-full resize-none"
+        />
+      </div>
+
+      {/* Category */}
+      <div>
+        <Label htmlFor="category">Product Category</Label>
+        <Select value={category} onValueChange={setCategory} disabled={isSubmitting}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="RealEstate">Real Estate</SelectItem>
+            <SelectItem value="Food">Food</SelectItem>
+            <SelectItem value="Rent">Rent</SelectItem>
+            <SelectItem value="OtherProducts">Other Products</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-gray-500 mt-2">
+          Select the category that best describes your product
+        </p>
+        {/* Hidden input for category */}
+        <input
+          type="hidden"
+          name="category"
+          value={category}
         />
       </div>
 

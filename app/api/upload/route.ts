@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     // Extract form data
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
+    const category = formData.get("category") as string;
     const price = formData.get("price") as string;
     const latitude = formData.get("latitude") as string;
     const longitude = formData.get("longitude") as string;
@@ -117,6 +118,7 @@ export async function POST(request: NextRequest) {
     const productData: any = {
       title,
       description,
+      category: category || "OtherProducts", // Default to OtherProducts if not provided
       userId: user.id,
       available: available !== "false", // Convert to boolean, default to true
     };
