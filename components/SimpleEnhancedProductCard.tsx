@@ -120,20 +120,58 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
       <CardContent className="p-0">
         {/* Product Image */}
         <div className="relative h-48 w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
-          {product.media?.mainImage ? (
-            <Image src={product.media.mainImage} alt={product.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
-          ) : product.media?.images?.length ? (
-            <Image src={product.media.images[0]} alt={product.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
-          ) : product.image || product.mainImage || product.images?.length ? (
-            <Image src={product.image ?? product.mainImage ?? product.images![0]!} alt={product.title} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-200">
-              <div className="text-gray-400 text-center p-4">
-                <div className="text-3xl mb-2">📦</div>
-                <div className="text-sm">No Image Available</div>
-              </div>
-            </div>
-          )}
+          {(() => {
+            // Try to get the main image from different sources
+            let imageUrl = null;
+            
+            if (product.media?.mainImage) {
+              imageUrl = product.media.mainImage;
+            } else if (product.media?.images && product.media.images.length > 0) {
+              imageUrl = product.media.images[0];
+            } else if (product.image) {
+              imageUrl = product.image;
+            } else if (product.mainImage) {
+              imageUrl = product.mainImage;
+            } else if (product.images && product.images.length > 0) {
+              imageUrl = product.images[0];
+            }
+            
+            // Fix double extensions in URLs
+            if (imageUrl) {
+              if (imageUrl.includes('.jpg.jpg')) {
+                imageUrl = imageUrl.replace('.jpg.jpg', '.jpg');
+                console.log('Fixed double extension:', imageUrl);
+              }
+              if (imageUrl.includes('.mp4.mp4')) {
+                imageUrl = imageUrl.replace('.mp4.mp4', '.mp4');
+                console.log('Fixed double extension:', imageUrl);
+              }
+            }
+            
+            if (imageUrl) {
+              return (
+                <Image 
+                  src={imageUrl} 
+                  alt={product.title} 
+                  fill 
+                  className="object-cover group-hover:scale-105 transition-transform duration-300" 
+                  onError={(e) => {
+                    console.log('Image failed to load:', imageUrl);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              );
+            } else {
+              return (
+                <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                  <div className="text-gray-400 text-center p-4">
+                    <div className="text-3xl mb-2">📦</div>
+                    <div className="text-sm">No Image Available</div>
+                  </div>
+                </div>
+              );
+            }
+          })()}
         </div>
 
         {/* Product Info */}

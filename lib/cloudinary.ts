@@ -19,7 +19,7 @@ export async function uploadToCloudinary(file: File | Buffer, folder: string = '
       const uploadOptions: any = {
         folder,
         resource_type: resourceType,
-        public_id: `${Date.now()}-${file instanceof File ? file.name : 'upload'}`,
+        public_id: `${Date.now()}-${file instanceof File ? file.name.split('.')[0] : 'upload'}`,
         overwrite: true,
       };
 
