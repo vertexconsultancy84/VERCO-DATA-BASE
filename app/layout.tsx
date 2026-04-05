@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     siteName: "VERTEX CONSULTING LTD",
     images: [
       {
-        url: "/vertex1.png",
+        url: "./vertex1.png",
         width: 1200,
         height: 630,
         alt: "Vertex Consulting LTD - Digital Solutions",
