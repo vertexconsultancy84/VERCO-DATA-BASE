@@ -16,12 +16,20 @@ const categoryLabels = {
   OtherProducts: "Other Products"
 };
 
+const rentSubcategories = {
+  apartment: "Apartment",
+  enterprise: "Enterprise", 
+  home: "Home",
+  "other-assets": "Other Assets"
+};
+
 // Define the Product interface for this component
 interface ViewProduct {
   id: string;
   title: string;
   description: string;
   category: string;
+  subcategory?: string;
   price: number | null | undefined;
   latitude?: number | null;
   longitude?: number | null;
@@ -52,6 +60,7 @@ export default function ViewProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedSubcategory, setSelectedSubcategory] = useState("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,11 +69,15 @@ export default function ViewProductsPage() {
 
   useEffect(() => {
     filterProducts();
-  }, [products, selectedCategory]);
+  }, [products, selectedCategory, selectedSubcategory]);
 
   const filterProducts = () => {
     if (selectedCategory === "all") {
       setFilteredProducts(products);
+    } else if (selectedCategory === "Rent" && selectedSubcategory !== "all") {
+      setFilteredProducts(products.filter(product => 
+        product.category === "Rent" && product.subcategory === selectedSubcategory
+      ));
     } else {
       setFilteredProducts(products.filter(product => product.category === selectedCategory));
     }
@@ -176,6 +189,22 @@ export default function ViewProductsPage() {
                   <SelectItem value="OtherProducts">Other Products</SelectItem>
                 </SelectContent>
               </Select>
+              
+              {/* Subcategory filter - only show for Rent category */}
+              {selectedCategory === "Rent" && (
+                <Select value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Rent</SelectItem>
+                    <SelectItem value="apartment">Apartment</SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                    <SelectItem value="home">Home</SelectItem>
+                    <SelectItem value="other-assets">Other Assets</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
         </div>

@@ -21,6 +21,7 @@ export default async function HomePage() {
       <Header />
       <Hero />
       <AboutSection />
+      <HomeServices />
       
       {/* Featured Products Section */}
       <section className="py-16 bg-gray-50">
@@ -72,7 +73,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <HomeServices />
       <ContactSection />
       <Footer />
     </main>
