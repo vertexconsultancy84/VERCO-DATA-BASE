@@ -76,6 +76,8 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
     const result = await deleteProduct(productId);
 
     if (result.success) {
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('productDeleted', { detail: { productId } }));
       window.location.reload();
     } else {
       alert(result.message);

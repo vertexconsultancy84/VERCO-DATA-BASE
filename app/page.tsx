@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
@@ -11,10 +14,42 @@ import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
 import { Package, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-export default async function HomePage() {
-  // Get featured products for the home page
-  const products = await getAllPublishedProducts();
-  const featuredProducts = products.slice(0, 6); // Show first 6 products
+export default function HomePage() {
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const products = await getAllPublishedProducts();
+      setProducts(products.slice(0, 6)); // Show first 6 products
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Listen for custom events for real-time updates
+  useEffect(() => {
+    const handleProductUpdate = () => {
+      fetchProducts();
+    };
+
+    window.addEventListener('productUpdated', handleProductUpdate);
+    window.addEventListener('productDeleted', handleProductUpdate);
+
+    return () => {
+      window.removeEventListener('productUpdated', handleProductUpdate);
+      window.removeEventListener('productDeleted', handleProductUpdate);
+    };
+  }, []);
+
+  const featuredProducts = products;
 
   return (
     <main className="min-h-screen">
@@ -42,7 +77,12 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          {featuredProducts.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading featured products...</p>
+            </div>
+          ) : featuredProducts.length === 0 ? (
             <div className="text-center py-12">
               <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">

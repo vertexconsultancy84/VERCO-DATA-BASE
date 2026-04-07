@@ -76,6 +76,21 @@ export default function ViewProductsPage() {
     fetchProducts();
   }, []);
 
+  // Listen for custom events for real-time updates
+  useEffect(() => {
+    const handleProductUpdate = () => {
+      fetchProducts();
+    };
+
+    window.addEventListener('productUpdated', handleProductUpdate);
+    window.addEventListener('productDeleted', handleProductUpdate);
+
+    return () => {
+      window.removeEventListener('productUpdated', handleProductUpdate);
+      window.removeEventListener('productDeleted', handleProductUpdate);
+    };
+  }, []);
+
   useEffect(() => {
     filterProducts();
   }, [products, selectedCategory, selectedSubcategory]);

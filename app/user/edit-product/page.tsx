@@ -96,6 +96,8 @@ function EditProductContent() {
       
       if (result.success) {
         setSuccess("Product updated successfully!");
+        // Dispatch custom event to notify other components
+        window.dispatchEvent(new CustomEvent('productUpdated', { detail: { productId } }));
         setTimeout(() => {
           router.push("/user/dashboard");
         }, 2000);
