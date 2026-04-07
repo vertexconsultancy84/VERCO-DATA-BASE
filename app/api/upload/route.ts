@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
     const category = formData.get("category") as string;
+    const subcategory = formData.get("subcategory") as string;
     const price = formData.get("price") as string;
     const latitude = formData.get("latitude") as string;
     const longitude = formData.get("longitude") as string;
@@ -126,6 +127,9 @@ export async function POST(request: NextRequest) {
     // Add optional fields
     if (price) {
       productData.price = parseFloat(price);
+    }
+    if (subcategory && subcategory !== "all") {
+      productData.subcategory = subcategory;
     }
     if (parsedLatitude !== null && parsedLongitude !== null) {
       productData.latitude = parsedLatitude;

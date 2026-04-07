@@ -10,6 +10,22 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Upload, X, Image as ImageIcon, Video } from "lucide-react";
 
+const rentSubcategories = {
+  apartment: "Apartment",
+  enterprise: "Enterprise", 
+  home: "Home",
+  "other-assets": "Other Assets"
+};
+
+const foodSubcategories = {
+  restaurant: "Restaurant",
+  grocery: "Grocery",
+  catering: "Catering",
+  "food-delivery": "Food Delivery",
+  bakery: "Bakery",
+  "other-food": "Other Food"
+};
+
 interface SimpleEnhancedProductUploadFormProps {
   onSuccess?: () => void;
 }
@@ -25,6 +41,7 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess }: SimpleEnh
   const [contactNumber, setContactNumber] = useState(""); // Contact number state
   const [whatsappNumber, setWhatsappNumber] = useState(""); // WhatsApp number state
   const [category, setCategory] = useState("OtherProducts"); // Category state
+  const [subcategory, setSubcategory] = useState("all"); // Subcategory state
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -199,7 +216,10 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess }: SimpleEnh
       {/* Category */}
       <div>
         <Label htmlFor="category">Product Category</Label>
-        <Select value={category} onValueChange={setCategory} disabled={isSubmitting}>
+        <Select value={category} onValueChange={(value) => {
+          setCategory(value);
+          setSubcategory("all"); // Reset subcategory when category changes
+        }} disabled={isSubmitting}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select a category" />
           </SelectTrigger>
@@ -211,7 +231,7 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess }: SimpleEnh
           </SelectContent>
         </Select>
         <p className="text-sm text-gray-500 mt-2">
-          Select the category that best describes your product
+          Select category that best describes your product
         </p>
         {/* Hidden input for category */}
         <input
@@ -220,6 +240,38 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess }: SimpleEnh
           value={category}
         />
       </div>
+
+      {/* Subcategory - only show for Rent and Food */}
+      {(category === "Rent" || category === "Food") && (
+        <div>
+          <Label htmlFor="subcategory">
+            {category === "Rent" ? "Rent Type" : "Food Type"}
+          </Label>
+          <Select value={subcategory} onValueChange={setSubcategory} disabled={isSubmitting}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={`Select ${category === "Rent" ? "rent type" : "food type"}`} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All {category === "Rent" ? "Rent" : "Food"}</SelectItem>
+              {category === "Rent" && Object.entries(rentSubcategories).map(([key, value]) => (
+                <SelectItem key={key} value={key}>{value}</SelectItem>
+              ))}
+              {category === "Food" && Object.entries(foodSubcategories).map(([key, value]) => (
+                <SelectItem key={key} value={key}>{value}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-gray-500 mt-2">
+            Select specific type for your {category.toLowerCase()} product
+          </p>
+          {/* Hidden input for subcategory */}
+          <input
+            type="hidden"
+            name="subcategory"
+            value={subcategory}
+          />
+        </div>
+      )}
 
       {/* Price */}
       <div>

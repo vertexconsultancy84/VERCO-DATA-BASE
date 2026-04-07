@@ -66,6 +66,7 @@ model Product {
   title         String
   description    String
   category      ProductCategory @default(OtherProducts)
+  subcategory   String?        // Optional subcategory for Rent and Food
   price         Float?         // Optional price field
   latitude      Float?         // Optional latitude for location
   longitude     Float?         // Optional longitude for location
@@ -78,6 +79,7 @@ model Product {
   contactNumber String?        // Optional contact number for this product
   whatsappNumber String?       // Optional WhatsApp number for this product
   media         ProductMedia[]
+  orders        Order[]         // Orders for this product
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -113,5 +115,21 @@ model Team {
   order     Int      @default(0) // for ordering team members
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId     String   @db.ObjectId
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productTitle  String
+  productPrice  Float
+  userId        String   @db.ObjectId
+  userName      String
+  userEmail     String
+  category      String
+  subcategory   String?
+  status        String   @default("pending") // pending, confirmed, preparing, ready, completed, cancelled
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 

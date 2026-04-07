@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Edit, Calendar, User, Package, MapPin, Mail, Eye, EyeOff } from "lucide-react";
+import { Trash2, Edit, Calendar, User, Package, MapPin, Mail, Eye, EyeOff, ShoppingCart } from "lucide-react";
 import { hideProductByAdmin, unhideProductByAdmin } from "../../actions/admin";
 
 interface Registration {
@@ -42,6 +42,20 @@ interface Product {
   }[];
 }
 
+interface Order {
+  id: string;
+  productId: string;
+  productTitle: string;
+  productPrice: number;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  category: string;
+  subcategory?: string;
+  status: string;
+  createdAt: string;
+}
+
 const categoryLabels = {
   RealEstate: "Real Estate",
   Food: "Food",
@@ -56,11 +70,21 @@ const categoryColors = {
   OtherProducts: "bg-orange-100 text-orange-800"
 };
 
+const statusColors = {
+  pending: "bg-yellow-100 text-yellow-800",
+  confirmed: "bg-blue-100 text-blue-800",
+  preparing: "bg-orange-100 text-orange-800",
+  ready: "bg-green-100 text-green-800",
+  completed: "bg-emerald-100 text-emerald-800",
+  cancelled: "bg-red-100 text-red-800"
+};
+
 export default function RecordsTable() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"registrations" | "products">("registrations");
+  const [activeTab, setActiveTab] = useState<"registrations" | "products" | "orders">("registrations");
 
   useEffect(() => {
     fetchRecords();
@@ -83,6 +107,13 @@ export default function RecordsTable() {
       const prodData = await prodResponse.json();
       console.log('Products response:', prodData);
       setProducts(prodData.data || []);
+      
+      // Fetch orders
+      console.log('Fetching orders...');
+      const ordersResponse = await fetch('/api/orders');
+      const ordersData = await ordersResponse.json();
+      console.log('Orders response:', ordersData);
+      setOrders(ordersData.orders || []);
       
     } catch (error: any) {
       console.error('Error fetching records:', error);
@@ -158,6 +189,30 @@ export default function RecordsTable() {
     }
   };
 
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId, status: newStatus }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`Order status updated to ${newStatus}`);
+        fetchRecords(); // Refresh records
+      } else {
+        alert(result.message || "Failed to update order status");
+      }
+    } catch (error: any) {
+      console.error("Update order error:", error);
+      alert("Failed to update order status");
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-RW', {
       year: 'numeric',
@@ -180,7 +235,7 @@ export default function RecordsTable() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Database Records</h1>
-        <p className="text-gray-600">View all registrations and products with management options</p>
+        <p className="text-gray-600">View all registrations, products, and customer orders with management options</p>
       </div>
 
       <div className="mb-6">
@@ -200,6 +255,14 @@ export default function RecordsTable() {
           >
             <Package className="w-4 h-4" />
             Products ({products.length})
+          </Button>
+          <Button
+            variant={activeTab === "orders" ? "default" : "outline"}
+            onClick={() => setActiveTab("orders")}
+            className="flex items-center gap-2"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            Orders ({orders.length})
           </Button>
         </div>
       </div>
@@ -404,6 +467,144 @@ export default function RecordsTable() {
                               <EyeOff className="w-3 h-3" />
                               Unhide
                             </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === "orders" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" />
+              Customer Orders
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Order Date</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="font-medium">{order.productTitle}</div>
+                          {order.subcategory && (
+                            <Badge variant="secondary" className="text-xs">
+                              {order.subcategory}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4" />
+                            <span className="font-medium">{order.userName}</span>
+                          </div>
+                          <div className="text-sm text-gray-600">{order.userEmail}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`text-xs ${categoryColors[order.category as keyof typeof categoryColors]}`}>
+                          {categoryLabels[order.category as keyof typeof categoryLabels]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold text-green-600">
+                          RWF {order.productPrice.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`text-xs ${statusColors[order.status as keyof typeof statusColors]}`}>
+                          {order.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          <span className="text-sm">{formatDate(order.createdAt)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          {order.status === "pending" && (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => handleUpdateOrderStatus(order.id, "confirmed")}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                              >
+                                Confirm
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleUpdateOrderStatus(order.id, "cancelled")}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          )}
+                          
+                          {order.status === "confirmed" && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleUpdateOrderStatus(order.id, "preparing")}
+                              className="bg-orange-600 hover:bg-orange-700 text-white"
+                            >
+                              Start Preparing
+                            </Button>
+                          )}
+                          
+                          {order.status === "preparing" && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleUpdateOrderStatus(order.id, "ready")}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              Mark Ready
+                            </Button>
+                          )}
+                          
+                          {order.status === "ready" && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleUpdateOrderStatus(order.id, "completed")}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                              Complete
+                            </Button>
+                          )}
+                          
+                          {order.status === "completed" && (
+                            <Badge variant="secondary" className="text-xs">
+                              Completed
+                            </Badge>
+                          )}
+                          
+                          {order.status === "cancelled" && (
+                            <Badge variant="destructive" className="text-xs">
+                              Cancelled
+                            </Badge>
                           )}
                         </div>
                       </TableCell>

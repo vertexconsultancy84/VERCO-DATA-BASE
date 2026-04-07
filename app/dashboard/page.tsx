@@ -6,13 +6,14 @@ import LogoutButton from "./_components/logout-button";
 import AdminStats from "./_components/admin-stats";
 import TeamManagement from "./_components/team-management";
 import RecordsTable from "./_components/records-table";
+import OrderComponent from "./_components/order";
 import { getRegistrations } from "../actions/register";
 import { getAllProductsForAdmin, getAdminStats, deleteProductByAdmin } from "../actions/admin";
 import { getAllTeamMembers } from "../actions/team";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { BarChart3, Users2, FileText } from "lucide-react";
+import { BarChart3, Users2, FileText, ShoppingCart } from "lucide-react";
 
 const allServices = [
   "Management Consultancy",
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -41,14 +43,31 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders');
+      const result = await response.json();
+      
+      if (result.success) {
+        return { success: true, orders: result.orders };
+      } else {
+        return { success: false, orders: [] };
+      }
+    } catch (error) {
+      console.error("Fetch orders error:", error);
+      return { success: false, orders: [] };
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [registrationsRes, productsRes, statsRes, teamRes] = await Promise.all([
+      const [registrationsRes, productsRes, statsRes, teamRes, ordersRes] = await Promise.all([
         getRegistrations(),
         getAllProductsForAdmin(),
         getAdminStats(),
         getAllTeamMembers(),
+        fetchOrders(),
       ]);
 
       if (registrationsRes.success) {
@@ -66,15 +85,47 @@ export default function DashboardPage() {
       if (teamRes.success) {
         setTeamMembers(teamRes.data || []);
       }
+
+      if (ordersRes.success) {
+        setOrders(ordersRes.orders || []);
+      }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       // Set empty arrays to prevent undefined errors
       setRegistrations([]);
       setProducts([]);
       setTeamMembers([]);
+      setOrders([]);
       setStats(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId, status: newStatus }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Refresh orders
+        const ordersRes = await fetchOrders();
+        if (ordersRes.success) {
+          setOrders(ordersRes.orders);
+        }
+      } else {
+        alert(result.message || "Failed to update order status");
+      }
+    } catch (error) {
+      console.error("Update order error:", error);
+      alert("Failed to update order status");
     }
   };
 

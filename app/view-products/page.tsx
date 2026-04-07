@@ -23,6 +23,15 @@ const rentSubcategories = {
   "other-assets": "Other Assets"
 };
 
+const foodSubcategories = {
+  restaurant: "Restaurant",
+  grocery: "Grocery",
+  catering: "Catering",
+  "food-delivery": "Food Delivery",
+  bakery: "Bakery",
+  "other-food": "Other Food"
+};
+
 // Define the Product interface for this component
 interface ViewProduct {
   id: string;
@@ -232,6 +241,7 @@ export default function ViewProductsPage() {
                 key={product.id}
                 product={product}
                 currentUser={null}
+                showAddToCart={true}
                 isAdmin={false}
               />
             ))}

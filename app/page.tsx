@@ -66,6 +66,7 @@ export default async function HomePage() {
                   product={product}
                   currentUser={null}
                   isAdmin={false}
+                  showAddToCart={true}
                 />
               ))}
             </div>

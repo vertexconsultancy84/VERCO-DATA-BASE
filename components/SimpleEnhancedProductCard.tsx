@@ -6,13 +6,15 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Eye, Edit, Trash2 } from "lucide-react";
+import { MapPin, Eye, Edit, Trash2, ShoppingCart } from "lucide-react";
 import { deleteProduct } from "@/app/actions/product";
 
 interface Product {
   id: string;
   title: string;
   description: string;
+  category: string;
+  subcategory?: string | null;
   price: number | null | undefined;
   latitude?: number | null;
   longitude?: number | null;
@@ -20,9 +22,13 @@ interface Product {
   district?: string | null;
   sector?: string | null;
   village?: string | null;
+  available: boolean;
+  hidden?: boolean;
+  contactNumber?: string | null;
+  whatsappNumber?: string | null;
   createdAt: string | Date;
-  distance?: number;
-  user: {
+  updatedAt: string | Date;
+  user?: {
     id: string;
     name: string;
     email: string;
@@ -30,9 +36,9 @@ interface Product {
   media?: {
     images: string[];
     videos: string[];
-    mainImage?: string | null | undefined;
-    mainVideo?: string | null | undefined;
-  } | null | undefined;
+    mainImage: string | null;
+    mainVideo: string | null;
+  } | null;
   // Legacy fields for backward compatibility
   image?: string;
   images?: string[];
@@ -45,9 +51,10 @@ interface SimpleEnhancedProductCardProps {
   product: Product;
   currentUser?: any;
   isAdmin?: boolean;
+  showAddToCart?: boolean; // Control Add to Cart button visibility
 }
 
-export default function SimpleEnhancedProductCard({ product, currentUser, isAdmin = false }: SimpleEnhancedProductCardProps) {
+export default function SimpleEnhancedProductCard({ product, currentUser, isAdmin = false, showAddToCart = false }: SimpleEnhancedProductCardProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -74,6 +81,49 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
       alert(result.message);
     }
     setDeleting(null);
+  };
+
+  const handleAddToCart = async (product: Product) => {
+    // Check if user is logged in
+    if (!currentUser) {
+      alert("Please login to add items to cart.");
+      return;
+    }
+
+    try {
+      // Create order for admin to receive
+      const orderData = {
+        productId: product.id,
+        productTitle: product.title,
+        productPrice: product.price || 0,
+        userId: currentUser?.id,
+        userName: currentUser?.name,
+        userEmail: currentUser?.email,
+        category: product.category,
+        subcategory: product.subcategory,
+        status: "pending",
+        createdAt: new Date().toISOString()
+      };
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`${product.title} added to cart! Order sent to admin for processing.`);
+      } else {
+        alert(result.message || "Failed to add to cart. Please try again.");
+      }
+    } catch (error) {
+      console.error("Add to cart error:", error);
+      alert("Failed to add to cart. Please try again.");
+    }
   };
 
   useEffect(() => {
@@ -231,7 +281,7 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
 
           {/* User Info */}
           <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-gray-500">Listed by {product.user.name}</div>
+            <div className="text-sm text-gray-500">Listed by {product.user?.name || 'Unknown'}</div>
             <div className="text-sm text-gray-500">{formatDate(product.createdAt)}</div>
           </div>
 
@@ -243,7 +293,19 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
               </Button>
             </Link>
 
-            {(currentUser && (product.user.id === currentUser.id || isAdmin)) && (
+            {/* Add to Cart button for Food category */}
+            {product.category === "Food" && showAddToCart && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                className="bg-orange-600 hover:bg-orange-700"
+                onClick={() => handleAddToCart(product)}
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" /> Add to Cart
+              </Button>
+            )}
+
+            {(currentUser && product.user && (product.user.id === currentUser.id || isAdmin)) && (
               <div className="flex gap-2">
                 <Link href={`/user/edit-product?id=${product.id}`}>
                   <Button variant="outline" size="sm"><Edit className="h-4 w-4 mr-2" /> Edit</Button>

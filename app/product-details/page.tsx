@@ -167,7 +167,10 @@ function ProductDetailContent() {
     }
   }, [productId]);
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number | null | undefined) => {
+    if (price === null || price === undefined) {
+      return "Price not specified";
+    }
     return `RWF ${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
