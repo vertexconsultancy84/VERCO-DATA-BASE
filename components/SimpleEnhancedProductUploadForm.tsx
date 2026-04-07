@@ -224,14 +224,86 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess }: SimpleEnh
             <SelectValue placeholder="Select a category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="RealEstate">Real Estate</SelectItem>
+            {/* Professional Services */}
+            <SelectItem value="ManagementConsultancy">Management Consultancy</SelectItem>
+            <SelectItem value="BusinessStrategy">Business Strategy Development</SelectItem>
+            <SelectItem value="ConsultingServices">Consulting Services</SelectItem>
+            <SelectItem value="LegalServices">Legal Services</SelectItem>
+            <SelectItem value="AccountingServices">Accounting Services</SelectItem>
+            <SelectItem value="TaxConsultation">Tax Consultation</SelectItem>
+            
+            {/* Industrial & Manufacturing */}
+            <SelectItem value="ChemicalManufacturing">Chemical Manufacturing</SelectItem>
+            <SelectItem value="Fertilizers">Fertilizers & Nitrogen Compounds</SelectItem>
+            <SelectItem value="Pesticides">Pesticides & Agrochemicals</SelectItem>
+            <SelectItem value="Paints">Paints & Coatings</SelectItem>
+            <SelectItem value="Soap">Soap & Detergents</SelectItem>
+            <SelectItem value="TechnicalTesting">Technical Testing & Analysis</SelectItem>
+            
+            {/* Trade & Commerce */}
+            <SelectItem value="GlobalTrading">Global Trading Services</SelectItem>
+            <SelectItem value="WholesaleTrade">Wholesale Trade</SelectItem>
+            <SelectItem value="AirtimeService">Airtime Service Retail</SelectItem>
+            <SelectItem value="CargoHandling">Cargo Handling</SelectItem>
+            <SelectItem value="ImportExport">Import & Export Services</SelectItem>
+            <SelectItem value="Logistics">Logistics & Supply Chain</SelectItem>
+            
+            {/* Food & Delivery */}
             <SelectItem value="Food">Food</SelectItem>
+            <SelectItem value="FoodDelivery">Food Delivery</SelectItem>
+            <SelectItem value="Restaurant">Restaurant Services</SelectItem>
+            <SelectItem value="Catering">Catering Services</SelectItem>
+            
+            {/* Real Estate & Property */}
+            <SelectItem value="RealEstate">Real Estate Services</SelectItem>
             <SelectItem value="Rent">Rent</SelectItem>
+            <SelectItem value="HouseRentals">House & Apartment Rentals</SelectItem>
+            <SelectItem value="PropertyManagement">Property Management</SelectItem>
+            <SelectItem value="Construction">Construction Services</SelectItem>
+            <SelectItem value="InteriorDesign">Interior Design</SelectItem>
+            <SelectItem value="Landscaping">Landscaping Services</SelectItem>
+            
+            {/* Home & Personal Services */}
+            <SelectItem value="CleaningServices">Cleaning Services</SelectItem>
+            <SelectItem value="SecurityServices">Security Services</SelectItem>
+            <SelectItem value="RepairMaintenance">Repair & Maintenance</SelectItem>
+            <SelectItem value="BeautySalon">Beauty & Salon Services</SelectItem>
+            <SelectItem value="Fitness">Fitness & Wellness</SelectItem>
+            <SelectItem value="Healthcare">Healthcare Services</SelectItem>
+            
+            {/* Transportation & Logistics */}
+            <SelectItem value="Transportation">Transportation Services</SelectItem>
+            <SelectItem value="Automotive">Automotive Services</SelectItem>
+            
+            {/* Digital & Technology */}
+            <SelectItem value="WebDevelopment">Web Development</SelectItem>
+            <SelectItem value="DigitalMarketing">Digital Marketing</SelectItem>
+            <SelectItem value="ITSupport">IT Support Services</SelectItem>
+            <SelectItem value="Telecommunications">Telecommunications</SelectItem>
+            
+            {/* Events & Entertainment */}
+            <SelectItem value="EventPlanning">Event Planning</SelectItem>
+            <SelectItem value="Photography">Photography & Videography</SelectItem>
+            <SelectItem value="Entertainment">Entertainment Services</SelectItem>
+            
+            {/* Financial & Insurance */}
+            <SelectItem value="Banking">Banking & Financial Services</SelectItem>
+            <SelectItem value="Insurance">Insurance Services</SelectItem>
+            
+            {/* Education & Training */}
+            <SelectItem value="TrainingEducation">Training & Education</SelectItem>
+            
+            {/* Hospitality & Tourism */}
+            <SelectItem value="Hospitality">Hospitality Services</SelectItem>
+            <SelectItem value="Tourism">Tourism Services</SelectItem>
+            
+            {/* Other */}
             <SelectItem value="OtherProducts">Other Products</SelectItem>
+            <SelectItem value="OtherServices">Other Services</SelectItem>
           </SelectContent>
         </Select>
         <p className="text-sm text-gray-500 mt-2">
-          Select category that best describes your product
+          Select category that best describes your product or service
         </p>
         {/* Hidden input for category */}
         <input
