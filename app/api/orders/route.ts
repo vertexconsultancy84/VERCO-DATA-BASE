@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
+  let orderData: any;
+  
   try {
-    const orderData = await request.json();
+    orderData = await request.json();
     
     const {
       productId,
@@ -12,13 +14,18 @@ export async function POST(request: NextRequest) {
       userId,
       userName,
       userEmail,
+      customerPhone,
+      deliveryAddress,
+      village,
+      deliveryInstructions,
+      paymentMethod,
       category,
       subcategory,
       status,
       createdAt
     } = orderData;
 
-    if (!productId || !userId || !userName) {
+    if (!productId || !userName) {
       return NextResponse.json({ 
         success: false, 
         message: "Missing required fields" 
@@ -31,9 +38,14 @@ export async function POST(request: NextRequest) {
         productId,
         productTitle,
         productPrice,
-        userId,
+        userId: userId || "507f191e810c19729de860ea", // Valid 12-byte ObjectId for guest orders
         userName,
         userEmail,
+        customerPhone,
+        deliveryAddress,
+        village,
+        deliveryInstructions,
+        paymentMethod,
         category,
         subcategory,
         status: status || "pending",
@@ -47,11 +59,15 @@ export async function POST(request: NextRequest) {
       orderId: order.id 
     });
 
-  } catch (error) {
-    console.error("Order creation error:", error);
+  } catch (error: any) {
+    console.error("Order creation error details:", {
+      message: error?.message || 'Unknown error',
+      stack: error?.stack || 'No stack trace',
+      orderData: orderData
+    });
     return NextResponse.json({ 
       success: false, 
-      message: "Failed to create order. Please try again." 
+      message: `Failed to create order: ${error?.message || 'Unknown error'}` 
     }, { status: 500 });
   }
 }
@@ -104,6 +120,37 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ 
       success: false, 
       message: "Failed to fetch orders." 
+    }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { orderId } = await request.json();
+    
+    if (!orderId) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "Order ID is required" 
+      }, { status: 400 });
+    }
+
+    // Delete order from database
+    const deletedOrder = await (prisma as any).order.delete({
+      where: { id: orderId }
+    });
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "Order deleted successfully",
+      order: deletedOrder
+    });
+
+  } catch (error) {
+    console.error("Order deletion error:", error);
+    return NextResponse.json({ 
+      success: false, 
+      message: "Failed to delete order. Please try again." 
     }, { status: 500 });
   }
 }

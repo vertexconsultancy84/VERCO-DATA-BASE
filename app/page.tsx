@@ -11,6 +11,7 @@ import ServicesSection from "@/components/ServicesSection";
 import HomeServices from "@/components/HomeServices";
 import { getAllPublishedProducts } from "@/app/actions/product";
 import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
+import ShoppingCartComponent from "@/components/ShoppingCart";
 import { Package, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
@@ -116,6 +117,7 @@ export default function HomePage() {
 
       <ContactSection />
       <Footer />
+      <ShoppingCartComponent />
     </main>
   );
 }

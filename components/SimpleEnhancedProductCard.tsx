@@ -86,45 +86,27 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
   };
 
   const handleAddToCart = async (product: Product) => {
-    // Check if user is logged in
-    if (!currentUser) {
-      alert("Please login to add items to cart.");
-      return;
-    }
-
     try {
-      // Create order for admin to receive
-      const orderData = {
+      // Add to shopping cart via custom event
+      const cartItem = {
         productId: product.id,
         productTitle: product.title,
         productPrice: product.price || 0,
-        userId: currentUser?.id,
-        userName: currentUser?.name,
-        userEmail: currentUser?.email,
         category: product.category,
         subcategory: product.subcategory,
-        status: "pending",
-        createdAt: new Date().toISOString()
+        image: product.media?.mainImage || product.media?.images?.[0],
+        quantity: 1
       };
 
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderData),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        alert(`${product.title} added to cart! Order sent to admin for processing.`);
-      } else {
-        alert(result.message || "Failed to add to cart. Please try again.");
-      }
+      // Dispatch custom event to shopping cart
+      window.dispatchEvent(new CustomEvent('addToCart', { detail: cartItem }));
+      
+      // Show success feedback
+      alert(`${product.title} added to cart!`);
+      
     } catch (error) {
       console.error("Add to cart error:", error);
-      alert("Failed to add to cart. Please try again.");
+      alert("Failed to add item to cart. Please try again.");
     }
   };
 

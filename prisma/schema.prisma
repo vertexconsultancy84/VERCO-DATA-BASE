@@ -123,12 +123,17 @@ model Order {
   product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   productTitle  String
   productPrice  Float
-  userId        String   @db.ObjectId
+  userId        String?  @db.ObjectId // Optional for guest orders
   userName      String
   userEmail     String
+  customerPhone String?
+  deliveryAddress String?
+  village        String?
+  deliveryInstructions String?
+  paymentMethod String?
   category      String
   subcategory   String?
-  status        String   @default("pending") // pending, confirmed, preparing, ready, completed, cancelled
+  status        String   @default("pending") // pending, confirmed, preparing, out_for_delivery, delivered, cancelled
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

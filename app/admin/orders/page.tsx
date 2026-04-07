@@ -4,22 +4,8 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import OrderComponent from "../../dashboard/_components/order";
 
-interface Order {
-  id: string;
-  productId: string;
-  productTitle: string;
-  productPrice: number;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  category: string;
-  subcategory?: string;
-  status: string;
-  createdAt: string;
-}
-
 export default function AdminOrdersDashboard() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -68,6 +54,42 @@ export default function AdminOrdersDashboard() {
     }
   };
 
+  const deleteOrder = async (orderId: string) => {
+    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('Order deleted successfully');
+        fetchOrders(); // Refresh orders
+      } else {
+        alert(result.message || "Failed to delete order");
+      }
+    } catch (error) {
+      console.error("Delete order error:", error);
+      alert("Failed to delete order");
+    }
+  };
+
+  const downloadOrder = (order: any) => {
+    // Import download functions
+    import('@/utils/orderDownload').then(({ downloadOrderAsCSV, downloadOrderAsJSON, downloadOrderAsPDF }) => {
+      // Default to PDF for professional format
+      downloadOrderAsPDF(order);
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -106,7 +128,9 @@ export default function AdminOrdersDashboard() {
         {/* Order Component */}
         <OrderComponent 
           orders={orders} 
-          onUpdateStatus={updateOrderStatus} 
+          onUpdateStatus={updateOrderStatus}
+          onDeleteOrder={deleteOrder}
+          onDownloadOrder={downloadOrder}
         />
       </div>
     </div>

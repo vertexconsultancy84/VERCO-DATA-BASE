@@ -5,6 +5,7 @@ import { getAllPublishedProducts } from "@/app/actions/product";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
+import ShoppingCartComponent from "@/components/ShoppingCart";
 import { Package, Star, Users, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -265,6 +266,7 @@ export default function ViewProductsPage() {
       </div>
 
       <Footer />
+      <ShoppingCartComponent />
     </main>
   );
 }

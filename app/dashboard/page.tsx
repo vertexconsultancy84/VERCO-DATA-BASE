@@ -129,6 +129,46 @@ export default function DashboardPage() {
     }
   };
 
+  const deleteOrder = async (orderId: string) => {
+    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('Order deleted successfully');
+        // Refresh orders
+        const ordersRes = await fetchOrders();
+        if (ordersRes.success) {
+          setOrders(ordersRes.orders);
+        }
+      } else {
+        alert(result.message || "Failed to delete order");
+      }
+    } catch (error) {
+      console.error("Delete order error:", error);
+      alert("Failed to delete order");
+    }
+  };
+
+  const downloadOrder = (order: any) => {
+    // Import the download functions
+    import('@/utils/orderDownload').then(({ downloadOrderAsCSV, downloadOrderAsJSON, downloadOrderAsPDF }) => {
+      // Default to PDF for professional format
+      downloadOrderAsPDF(order);
+    });
+  };
+
   const handleDeleteProduct = async (productId: string) => {
     setIsDeleting(true);
     try {
@@ -164,26 +204,34 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen flex flex-col">
       <div className="flex-grow container mx-auto px-4 py-12 mt-24">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
             Admin Dashboard
           </h1>
           <LogoutButton />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+          <TabsTrigger value="overview" className="flex items-center gap-2 text-xs sm:text-sm">
             <BarChart3 className="w-4 h-4" />
-            Overview
+            <span className="hidden sm:inline">Overview</span>
+            <span className="sm:hidden">Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="records" className="flex items-center gap-2">
+          <TabsTrigger value="records" className="flex items-center gap-2 text-xs sm:text-sm">
             <FileText className="w-4 h-4" />
-            All Records
+            <span className="hidden sm:inline">All Records</span>
+            <span className="sm:hidden">Records</span>
           </TabsTrigger>
-          <TabsTrigger value="team" className="flex items-center gap-2">
+          <TabsTrigger value="orders" className="flex items-center gap-2 text-xs sm:text-sm">
+            <ShoppingCart className="w-4 h-4" />
+            <span className="hidden sm:inline">Orders</span>
+            <span className="sm:hidden">Orders</span>
+          </TabsTrigger>
+          <TabsTrigger value="team" className="flex items-center gap-2 text-xs sm:text-sm">
             <Users2 className="w-4 h-4" />
-            Team
+            <span className="hidden sm:inline">Team</span>
+            <span className="sm:hidden">Team</span>
           </TabsTrigger>
         </TabsList>
 
@@ -200,6 +248,15 @@ export default function DashboardPage() {
 
           <TabsContent value="records" className="space-y-6">
             <RecordsTable />
+          </TabsContent>
+
+          <TabsContent value="orders" className="space-y-6">
+            <OrderComponent 
+              orders={orders}
+              onUpdateStatus={updateOrderStatus}
+              onDeleteOrder={deleteOrder}
+              onDownloadOrder={downloadOrder}
+            />
           </TabsContent>
 
           <TabsContent value="team" className="space-y-6">
