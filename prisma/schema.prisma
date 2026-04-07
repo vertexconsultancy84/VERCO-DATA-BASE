@@ -123,6 +123,7 @@ model Order {
   product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   productTitle  String
   productPrice  Float
+  quantity       Int      @default(1) // Number of items ordered
   userId        String?  @db.ObjectId // Optional for guest orders
   userName      String
   userEmail     String

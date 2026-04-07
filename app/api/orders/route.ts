@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
       productId,
       productTitle,
       productPrice,
+      quantity,
       userId,
       userName,
       userEmail,
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
         productId,
         productTitle,
         productPrice,
+        quantity: quantity || 1,
         userId: userId || "507f191e810c19729de860ea", // Valid 12-byte ObjectId for guest orders
         userName,
         userEmail,

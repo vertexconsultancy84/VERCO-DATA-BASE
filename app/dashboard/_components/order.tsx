@@ -11,6 +11,7 @@ interface Order {
   productId: string;
   productTitle: string;
   productPrice: number;
+  quantity: number;
   userId?: string;
   userName: string;
   userEmail: string;
@@ -211,6 +212,14 @@ export default function OrderComponent({ orders, onUpdateStatus, onDeleteOrder, 
                             <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-gray-600 sm:ml-6">
                               <span className="font-medium">Price:</span>
                               <span className="text-green-600 font-semibold">{formatPrice(order.productPrice)}</span>
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-gray-600 sm:ml-6">
+                              <span className="font-medium">Quantity:</span>
+                              <span className="text-blue-600 font-semibold">{order.quantity} {order.quantity === 1 ? 'item' : 'items'}</span>
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-gray-600 sm:ml-6">
+                              <span className="font-medium">Total:</span>
+                              <span className="text-green-600 font-bold">{formatPrice(order.productPrice * order.quantity)}</span>
                             </div>
                           </div>
                         </div>

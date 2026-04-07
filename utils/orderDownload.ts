@@ -5,6 +5,7 @@ interface Order {
   productId: string;
   productTitle: string;
   productPrice: number;
+  quantity: number;
   userId?: string;
   userName: string;
   userEmail: string;
@@ -28,6 +29,8 @@ export const downloadOrderAsCSV = (order: Order) => {
     `Order ID,${order.id}`,
     `Product,${order.productTitle}`,
     `Price,RWF ${order.productPrice.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+    `Quantity,${order.quantity}`,
+    `Total Amount,RWF ${(order.productPrice * order.quantity).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
     `Category,${order.category}`,
     `Subcategory,${order.subcategory || 'N/A'}`,
     `Status,${order.status}`,
@@ -43,7 +46,7 @@ export const downloadOrderAsCSV = (order: Order) => {
     `Delivery Instructions,${order.deliveryInstructions || 'N/A'}`,
     "",
     "Order Summary",
-    `Total Amount,RWF ${order.productPrice.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+    `Total Amount,RWF ${(order.productPrice * order.quantity).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
     `Payment Status,${order.status}`,
     `Delivery Status,${order.status}`,
   ].join('\n');
@@ -205,7 +208,15 @@ export const downloadOrderAsPDF = (order: Order) => {
           </div>
           <div class="info-row">
             <span class="label">Price:</span>
-            <span class="value price">RWF ${order.productPrice.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+            <span class="value">RWF ${order.productPrice.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Quantity:</span>
+            <span class="value">${order.quantity} ${order.quantity === 1 ? 'item' : 'items'}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Total Amount:</span>
+            <span class="value price">RWF ${(order.productPrice * order.quantity).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
           </div>
           <div class="info-row">
             <span class="label">Status:</span>
