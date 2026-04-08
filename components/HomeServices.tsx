@@ -16,35 +16,22 @@ import { registerInterest } from "@/app/actions/register"; // Import the new Ser
 const services = [
   "Management Consultancy",
   "Business Strategy Development",
-  "Chemical Manufacturing",
-  "Fertilizers",
-  "Paints & Coatings",
-  "Global Trading Services",
   "Wholesale Trade",
   "Cargo Handling",
   "Food Delivery",
   "Real Estate Services for Sale and rent",
-  "Property Management",
   "Construction Services",
   "Interior Design",
-  "Landscaping Services",
   "Transportation Services",
-  "Event Planning",
   "Photography & Videography",
   "Digital Marketing",
-  "IT Support Services",
   "Accounting Services",
   "Consulting Services",
   "Training & Education",
-  "Repair & Maintenance",
   "Logistics & Supply Chain",
-  "Hospitality Services",
-  "Other Services",
-  "Technical Testing & Analysis",
   "Tax consultation",
   "Product Pricing Strategy",
-  "Customer Management",
-  "Auditing",
+   "Other Services",
 ];
 
 export default function HomeServices() {
@@ -152,7 +139,7 @@ export default function HomeServices() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-4 items-start">
           {/* Services List */}
           <div
             key={`services-${animationKey}`}
@@ -162,20 +149,20 @@ export default function HomeServices() {
                 : "opacity-0 translate-x-[-50px]"
             }`}
           >
-            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 h-full flex flex-col">
-              <h3 className="text-xl font-semibold text-gray-800 mb-6">
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 h-full flex flex-col">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">
                 Available Services
               </h3>
 
-              {/* Services Grid - Flex Grow */}
-              <div className="grid grid-cols-1 gap-4 flex-grow mb-6">
+              {/* Services Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
                 {services.map((service, index) => (
-                  <div className="flex items-center gap-3 group" key={index}>
-                    <CircleCheckBig className="w-5 h-5 text-[#0066FF] flex-shrink-0" />
-                    <h4 className="text-gray-800 font-medium text-sm group-hover:text-[#F17105] transition-colors duration-300">
+                  <div className="flex items-center gap-2 group p-2 rounded hover:bg-gray-100 transition-colors duration-300" key={index}>
+                    <CircleCheckBig className="w-4 h-4 text-[#0066FF] flex-shrink-0" />
+                    <h4 className="text-gray-800 font-medium text-xs sm:text-sm group-hover:text-[#F17105] transition-colors duration-300 flex-1">
                       {service}
                     </h4>
-                    <div className="w-2 h-2 bg-[#F17105] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="w-2 h-2 bg-[#F17105] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex-shrink-0"></div>
                   </div>
                 ))}
               </div>
@@ -183,16 +170,16 @@ export default function HomeServices() {
               {/* Button at Bottom */}
               <div
                 key={`button-${animationKey}`}
-                className={`text-center transition-all duration-1000 mt-auto ${
+                className={`text-center transition-all duration-1000 ${
                   isVisible
                     ? "animate-fadeInUp animation-delay-1400"
                     : "opacity-0 translate-y-[30px]"
                 }`}
               >
                 <Link href="/services">
-                  <Button className="bg-[#F17105] hover:bg-[#F17105]/90 text-white px-8 py-3 rounded-lg font-semibold text-base hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Button className="bg-[#F17105] hover:bg-[#F17105]/90 text-white px-4 sm:px-8 py-2 sm:py-3 rounded-lg font-semibold text-sm sm:text-base hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl w-full sm:w-auto">
                     View All Services Details
-                    <ArrowRight className="ml-2 w-5 h-5" />
+                    <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
                   </Button>
                 </Link>
               </div>
@@ -208,11 +195,11 @@ export default function HomeServices() {
                 : "opacity-0 translate-x-[50px]"
             }`}
           >
-            <div className="bg-gray-50 p-8 rounded-lg border border-gray-200 shadow-lg">
-              <h3 className="text-2xl font-bold text-gray-800 mb-3">
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 shadow-lg">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-3">
                 Register Your Interest
               </h3>
-              <p className="text-gray-600 text-sm mb-8">
+              <p className="text-gray-600 text-xs sm:text-sm mb-4 sm:mb-6">
                 Fill out the form below to get started with our consulting
                 services. We will contact you shortly.
               </p>

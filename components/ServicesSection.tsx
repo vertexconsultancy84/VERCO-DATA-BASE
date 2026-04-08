@@ -20,50 +20,9 @@ const services = [
     date: "Strategic",
     comments: "Planning",
   },
+
   {
     id: 3,
-    title: "Customer Management",
-    description:
-      "Customer acquisition, Customer data management, customer retention royalty, custmer relationship building and customer performance Management.",
-    image: "/images/service2.jpg?height=300&width=400",
-    date: "Quality",
-    comments: "Assured",
-  },
-
- 
-  {
-    id: 4,
-    title: "Paints & Coatings",
-    description:
-      "Consulting services for paint, varnish, and coating manufacturing processes.",
-    image: "/images/service5.jpg?height=300&width=400",
-    date: "Quality",
-    comments: "Coatings",
-  },
-  
-
-  {
-    id: 5,
-    title: "Global Trading Services",
-    description:
-      "International trade consulting and global market entry strategies for businesses.",
-    image: "/images/global-trade.jpg?height=300&width=400",
-    date: "Global",
-    comments: "Reach",
-  },
-  {
-    id: 6,
-    title: "Wholesale Trade",
-    description:
-      "Non-specialized wholesale trade consulting and distribution network optimization.",
-    image: "/images/wholesale.jpg?height=300&width=400",
-    date: "Trade",
-    comments: "Networks",
-  },
-
- 
-  {
-    id: 7,
     title: "Cargo Handling",
     description:
       "Professional logistics and cargo handling consulting for efficient operations.",
@@ -71,17 +30,9 @@ const services = [
     date: "Logistics",
     comments: "Solutions",
   },
+ 
   {
-    id: 8,
-    title: "Technical Testing & Analysis",
-    description:
-      "Comprehensive technical testing and analysis services for quality assurance.",
-    image: "/images/technical-testing.jpg?height=300&width=400",
-    date: "Quality",
-    comments: "Testing",
-  },
-  {
-    id: 9,
+    id: 4,
     title: "Tax consultation, Product, Pricing Strategy",
     description:
       "Tax advisory, product maketing, and pricing strategy with industries",
@@ -89,17 +40,9 @@ const services = [
     date: "Quality",
     comments: "Testing",
   },
-    {
-    id: 10,
-    title: "Chemical Manufacturing",
-    description:
-      "Professional consulting for basic chemicals manufacturing and production optimization.",
-    image: "/images/service6.jpg?height=300&width=400",
-    date: "Quality",
-    comments: "Assured",
-  },
+   
   {
-    id: 11,
+    id: 5,
     title: "Food Delivery",
     description:
       "Professional food delivery services connecting restaurants with customers for convenient meal delivery.",
@@ -107,35 +50,19 @@ const services = [
     date: "24/7",
     comments: "Delivery",
   },
+ 
   {
-    id: 12,
-    title: "House & Apartment Rentals",
-    description:
-      "Comprehensive rental services for houses, apartments, and residential properties with flexible terms.",
-    image: "/images/real-estate.jpg?height=300&width=400",
-    date: "Homes",
-    comments: "Available",
-  },
-  {
-    id: 13,
-    title: "Real Estate Services",
+    id: 6,
+    title: "Real Estate Services for Sale and Rent",
     description:
       "Professional real estate consulting, property management, and investment advisory services.",
     image: "/images/real-estate.jpg?height=300&width=400",
     date: "Property",
     comments: "Expert",
   },
+
   {
-    id: 14,
-    title: "Property Management",
-    description:
-      "Complete property management services for residential and commercial properties.",
-    image: "/images/service4.jpg?height=300&width=400",
-    date: "Managed",
-    comments: "Care",
-  },
-  {
-    id: 15,
+    id: 7,
     title: "Construction Services",
     description:
       "Professional construction consulting and project management for residential and commercial projects.",
@@ -144,7 +71,7 @@ const services = [
     comments: "Quality",
   },
   {
-    id: 16,
+    id: 8,
     title: "Interior Design",
     description:
       "Creative interior design services for homes, offices, and commercial spaces.",
@@ -155,7 +82,7 @@ const services = [
  
  
   {
-    id: 17,
+    id: 9,
     title: "Transportation Services",
     description:
       "Reliable transportation and logistics services for goods and passengers.",
@@ -163,17 +90,10 @@ const services = [
     date: "Transit",
     comments: "Reliable",
   },
+  
+
   {
-    id: 18,
-    title: "Event Planning",
-    description:
-      "Professional event planning and management services for corporate and private events.",
-    image: "/images/event.jpg?height=300&width=400",
-    date: "Events",
-    comments: "Managed",
-  },
-  {
-    id: 19,
+    id: 10,
     title: "Photography & Videography",
     description:
       "Professional photography and videography services for events, products, and marketing.",
@@ -183,7 +103,7 @@ const services = [
   },
  
   {
-    id: 20,
+    id: 11,
     title: "Digital Marketing",
     description:
       "Comprehensive digital marketing strategies to grow your online presence.",
@@ -191,35 +111,10 @@ const services = [
     date: "Marketing",
     comments: "Growth",
   },
+  
+
   {
-    id: 21,
-    title: "IT Support Services",
-    description:
-      "Professional IT support and technical services for businesses and individuals.",
-    image: "/images/IT-suport.jpg?height=300&width=400",
-    date: "Tech",
-    comments: "Support",
-  },
-  {
-    id: 22,
-    title: "Legal Services",
-    description:
-      "Professional legal consulting and advisory services for businesses and individuals.",
-    image: "/images/legal.jpg?height=300&width=400",
-    date: "Legal",
-    comments: "Expert",
-  },
-  {
-    id: 23,
-    title: "Accounting Services",
-    description:
-      "Professional accounting and financial management services for businesses.",
-    image: "/images/accounting.jpg?height=300&width=400",
-    date: "Finance",
-    comments: "Accurate",
-  },
-  {
-    id: 24,
+    id: 12,
     title: "Training & Education",
     description:
       "Professional training and educational services for skill development.",
@@ -228,18 +123,9 @@ const services = [
     comments: "Growth",
   },
  
- 
+
   {
-    id: 25,
-    title: "Repair & Maintenance",
-    description:
-      "Comprehensive repair and maintenance services for residential and commercial properties.",
-    image: "/images/construction.jpg?height=300&width=400",
-    date: "Repair",
-    comments: "Maintenance",
-  },
-  {
-    id: 26,
+    id: 13,
     title: "Logistics & Supply Chain",
     description:
       "Professional logistics and supply chain management solutions for businesses.",
@@ -247,29 +133,9 @@ const services = [
     date: "Logistics",
     comments: "Efficient",
   },
- 
-  {
-    id: 27,
-    title: "Insurance Services",
-    description:
-      "Comprehensive insurance consulting and risk management services.",
-    image: "/images/insurance.jpg?height=300&width=400",
-    date: "Insurance",
-    comments: "Protected",
-  },
   
   {
-    id: 28,
-    title: "Hospitality Services",
-    description:
-      "Professional hospitality consulting and hotel management services.",
-    image: "/images/hospitality.jpg?height=300&width=400",
-    date: "Hospitality",
-    comments: "Service",
-  },
-  
-  {
-    id: 29,
+    id: 14,
     title: "Other Services",
     description:
       "Custom services tailored to your specific business needs and requirements.",
