@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Mail, Globe, ExternalLink, MessageCircle, Phone, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { MapPin, Mail, Globe, ExternalLink, MessageCircle, Phone, CheckCircle, XCircle, AlertCircle, User as UserIcon, Building } from "lucide-react";
+import OwnerDetailsModal from "@/components/OwnerDetailsModal";
 import Image from "next/image";
 
 interface Product {
@@ -19,6 +20,11 @@ interface Product {
   available?: boolean; // Add availability field
   contactNumber?: string; // Product-specific contact number
   whatsappNumber?: string; // Product-specific WhatsApp number
+  province?: string;
+  district?: string;
+  sector?: string;
+  village?: string;
+  zone?: string;
   user: {
     id: string;
     name: string;
@@ -30,25 +36,34 @@ interface Product {
     mainImage?: string;
     mainVideo?: string;
   };
+  ownerFullName?: string;
+  ownerNationality?: string;
+  ownerID?: string;
+  ownerAddress?: string;
 }
 
 // Helper functions for media management
 const getAllMedia = (product: Product | null): string[] => {
   if (!product) return [];
   
-  const media: string[] = [];
+  const allMedia: string[] = [];
+  const media = Array.isArray(product.media) && product.media.length > 0 
+    ? product.media[0] 
+    : product.media;
   
-  // Add images from media object
-  if (product.media && product.media.images && product.media.images.length > 0) {
-    media.push(...product.media.images);
+  if (!media) return [];
+
+  // Add images
+  if (media.images && media.images.length > 0) {
+    allMedia.push(...media.images);
   }
   
-  // Add videos from media object
-  if (product.media && product.media.videos && product.media.videos.length > 0) {
-    media.push(...product.media.videos);
+  // Add videos
+  if (media.videos && media.videos.length > 0) {
+    allMedia.push(...media.videos);
   }
   
-  return media;
+  return allMedia;
 };
 
 const getCurrentMedia = (product: Product | null, currentIndex: number): string | null => {
@@ -60,12 +75,16 @@ const getMediaType = (product: Product | null, index: number): 'image' | 'video'
   if (!product) return 'image';
   
   const allMedia = getAllMedia(product);
-  const media = allMedia[index];
+  const mediaFile = allMedia[index];
   
-  if (!media) return 'image';
+  if (!mediaFile) return 'image';
   
+  const media = Array.isArray(product.media) && product.media.length > 0 
+    ? product.media[0] 
+    : product.media;
+
   // Check if it's in videos array
-  if (product.media && product.media.videos && product.media.videos.includes(media)) {
+  if (media && media.videos && media.videos.includes(mediaFile)) {
     return 'video';
   }
   
@@ -89,6 +108,7 @@ function ProductDetailContent() {
   const [distance, setDistance] = useState<number | null>(null);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
+  const [isOwnerModalOpen, setIsOwnerModalOpen] = useState(false);
 
   // Haversine formula to calculate distance between two points
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -134,10 +154,14 @@ function ProductDetailContent() {
         if (data.success) {
           setProduct(data.product);
           
+          const media = Array.isArray(data.product.media) && data.product.media.length > 0 
+            ? data.product.media[0] 
+            : data.product.media;
+            
           // Set initial media type
-          if (data.product.media && data.product.media.images && data.product.media.images.length > 0) {
+          if (media && media.images && media.images.length > 0) {
             setMediaType('image');
-          } else if (data.product.media && data.product.media.videos && data.product.media.videos.length > 0) {
+          } else if (media && media.videos && media.videos.length > 0) {
             setMediaType('video');
           }
           
@@ -309,18 +333,18 @@ function ProductDetailContent() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 {/* Product Media Gallery */}
                 <div className="space-y-4">
                   {/* Main Media Display */}
-                  <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
+                  <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100 shadow-inner">
                     {getCurrentMedia(product, currentMediaIndex) ? (
                       mediaType === 'image' ? (
                         <Image
                           src={getCurrentMedia(product, currentMediaIndex)!}
                           alt={product.title}
                           fill
-                          className="object-cover"
+                          className="object-cover transition-all duration-500"
                         />
                       ) : (
                         <video
@@ -334,7 +358,7 @@ function ProductDetailContent() {
                       <div className="w-full h-full flex items-center justify-center bg-gray-200">
                         <div className="text-gray-400 text-center p-4">
                           <div className="text-6xl mb-2">📦</div>
-                          <div className="text-sm">No Media Available</div>
+                          <div className="text-sm font-medium">No Media Available</div>
                         </div>
                       </div>
                     )}
@@ -342,7 +366,7 @@ function ProductDetailContent() {
 
                   {/* Media Thumbnails */}
                   {getAllMedia(product).length > 1 && (
-                    <div className="flex space-x-2 overflow-x-auto pb-2">
+                    <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
                       {getAllMedia(product).map((media: string, index: number) => (
                         <button
                           key={index}
@@ -350,8 +374,8 @@ function ProductDetailContent() {
                             setCurrentMediaIndex(index);
                             setMediaType(getMediaType(product, index));
                           }}
-                          className={`relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-colors ${
-                            currentMediaIndex === index ? 'border-orange-500' : 'border-gray-200'
+                          className={`relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all duration-200 ${
+                            currentMediaIndex === index ? 'border-orange-500 scale-105 shadow-md' : 'border-gray-200 opacity-70 hover:opacity-100'
                           }`}
                         >
                           {getMediaType(product, index) === 'image' ? (
@@ -369,8 +393,8 @@ function ProductDetailContent() {
                             />
                           )}
                           {getMediaType(product, index) === 'video' && (
-                            <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                              <div className="text-white text-xs">▶</div>
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <div className="text-white text-xs bg-orange-500 p-1 rounded-full">▶</div>
                             </div>
                           )}
                         </button>
@@ -378,123 +402,147 @@ function ProductDetailContent() {
                     </div>
                   )}
                 </div>
-                <div className="space-y-4">
+
+                <div className="space-y-6">
+                  {/* Description */}
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
-                    <p className="text-gray-600 leading-relaxed">
+                    <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center">
+                      <div className="w-1 h-6 bg-orange-500 rounded-full mr-2"></div>
+                      Description
+                    </h3>
+                    <p className="text-gray-600 leading-relaxed bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                       {product.description}
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Price</h3>
-                      <Badge variant="secondary" className="text-2xl font-bold">
-                        {formatPrice(product.price)}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Distance */}
-                  {distance !== null && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-2">
-                        <MapPin className="h-5 w-5 text-blue-600" />
-                        <div>
-                          <p className="text-sm text-blue-600 font-medium">
-                            Distance from your location
-                          </p>
-                          <p className="text-2xl font-bold text-blue-900">
-                            {distance} km
-                          </p>
-                        </div>
-                      </div>
+                  {/* Location */}
+                  {(product.province || product.district || product.sector || product.village || product.zone) && (
+                    <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-5 shadow-sm">
+                      <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center">
+                        <MapPin className="w-5 h-5 mr-2 text-orange-600" />
+                        Detailed Location
+                      </h3>
+                      <p className="text-gray-700 font-medium">
+                        {[product.province, product.district, product.sector, product.village, product.zone]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
                     </div>
                   )}
 
-                  {/* Contact */}
-                  <div className="border-t pt-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Contact Seller</h3>
-                    
-                    {/* Availability-based contact message */}
-                    <div className={`mb-4 p-3 rounded-lg ${
-                      product.available !== false 
-                        ? 'bg-green-50 border border-green-200' 
-                        : 'bg-yellow-50 border border-yellow-200'
-                    }`}>
-                      <div className="flex items-center gap-2">
-                        {product.available !== false ? (
-                          <>
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                            <p className="text-sm text-green-800">
-                              This product is available. Contact the seller to inquire about purchase.
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            <AlertCircle className="w-4 h-4 text-yellow-600" />
-                            <p className="text-sm text-yellow-800">
-                              This product is currently unavailable. You can still contact the seller to inquire about future availability.
-                            </p>
-                          </>
-                        )}
+                  {/* Price & Distance */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
+                      <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Price</h3>
+                      <p className="text-3xl font-black text-orange-600">
+                        {formatPrice(product.price)}
+                      </p>
+                    </div>
+
+                    {distance !== null && (
+                      <div className="bg-blue-50 border border-blue-100 p-5 rounded-xl shadow-sm">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <MapPin className="h-4 w-4 text-blue-600" />
+                          <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider">Proximity</h3>
+                        </div>
+                        <p className="text-3xl font-black text-blue-900">
+                          {distance} <span className="text-lg font-normal">km away</span>
+                        </p>
                       </div>
+                    )}
+                  </div>
+
+                  {/* Contact Section */}
+                  <div className="pt-6 border-t border-gray-100">
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">Contact Seller</h3>
+                    
+                    {/* Availability Banner */}
+                    <div className={`mb-6 p-4 rounded-xl flex items-start gap-3 ${
+                      product.available !== false 
+                        ? 'bg-green-50 border border-green-100' 
+                        : 'bg-amber-50 border border-amber-100'
+                    }`}>
+                      {product.available !== false ? (
+                        <>
+                          <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
+                          <div>
+                            <p className="font-bold text-green-900">Available Now</p>
+                            <p className="text-sm text-green-700">This product is ready for viewing and purchase.</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0" />
+                          <div>
+                            <p className="font-bold text-amber-900">Limited Availability</p>
+                            <p className="text-sm text-amber-700">Currently unavailable, but you can still inquire for future updates.</p>
+                          </div>
+                        </>
+                      )}
                     </div>
                     
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-3 text-gray-600">
-                        <Mail className="h-4 w-4" />
-                        <span>{product.user.email}</span>
+                    <div className="grid grid-cols-1 gap-3">
+                      {/* Contact Owner Button (Landlord Details) */}
+                      <Button
+                        className="w-full justify-start h-14 text-lg font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg transition-all group"
+                        onClick={() => setIsOwnerModalOpen(true)}
+                      >
+                        <div className="bg-white/20 p-2 rounded-lg mr-4 group-hover:bg-white/30 transition-colors">
+                          <UserIcon className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs text-blue-100 font-normal">Legal Owner</span>
+                          <span>View Owner Details</span>
+                        </div>
+                      </Button>
+
+                      {/* Email Button */}
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start h-14 text-lg font-semibold hover:bg-orange-50 hover:border-orange-200 transition-all group"
+                        onClick={() => window.open(`mailto:${product.user.email}`, '_blank')}
+                      >
+                        <div className="bg-gray-100 p-2 rounded-lg mr-4 group-hover:bg-orange-100 transition-colors">
+                          <Mail className="h-5 w-5 text-gray-600 group-hover:text-orange-600" />
+                        </div>
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs text-gray-500 font-normal">Email Address</span>
+                          <span>{product.user.email}</span>
+                        </div>
+                      </Button>
+                      
+                      {/* Phone Button */}
+                      {product.contactNumber && (
                         <Button
                           variant="outline"
-                          size="sm"
-                          onClick={() => window.open(`mailto:${product.user.email}`, '_blank')}
-                          className="ml-2"
+                          className="w-full justify-start h-14 text-lg font-semibold hover:bg-blue-50 hover:border-blue-200 transition-all group"
+                          onClick={() => window.open(`tel:${product.contactNumber}`, '_blank')}
                         >
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          Send Email
+                          <div className="bg-gray-100 p-2 rounded-lg mr-4 group-hover:bg-blue-100 transition-colors">
+                            <Phone className="h-5 w-5 text-gray-600 group-hover:text-blue-600" />
+                          </div>
+                          <div className="flex flex-col items-start">
+                            <span className="text-xs text-gray-500 font-normal">Call Directly</span>
+                            <span>{product.contactNumber}</span>
+                          </div>
                         </Button>
-                      </div>
-                      
-                      {/* WhatsApp contact placeholder - will be enabled after database migration */}
-                      {product.contactNumber ? (
-                        <div className="flex items-center space-x-3 text-gray-600">
-                          <Phone className="h-4 w-4" />
-                          <span>{product.contactNumber}</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(`tel:${product.contactNumber}`, '_blank')}
-                            className="ml-2"
-                          >
-                            Call Now
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-3 text-gray-400">
-                          <Phone className="h-4 w-4" />
-                          <span className="text-sm">Contact number not provided</span>
-                        </div>
                       )}
                       
-                      {product.whatsappNumber ? (
-                        <div className="flex items-center space-x-3 text-gray-600">
-                          <MessageCircle className="h-4 w-4 text-green-600" />
-                          <span>{product.whatsappNumber}</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(`https://wa.me/${(product.whatsappNumber || '').replace(/[^\d]/g, '')}`, '_blank')}
-                            className="ml-2"
-                          >
-                            WhatsApp
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-3 text-gray-400">
-                          <MessageCircle className="h-4 w-4 text-green-600" />
-                          <span className="text-sm">WhatsApp number not provided</span>
-                        </div>
+                      {/* WhatsApp Button */}
+                      {product.whatsappNumber && (
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start h-14 text-lg font-semibold hover:bg-green-50 hover:border-green-200 transition-all group"
+                          onClick={() => window.open(`https://wa.me/${(product.whatsappNumber || '').replace(/[^\d]/g, '')}`, '_blank')}
+                        >
+                          <div className="bg-gray-100 p-2 rounded-lg mr-4 group-hover:bg-green-100 transition-colors">
+                            <MessageCircle className="h-5 w-5 text-gray-600 group-hover:text-green-600" />
+                          </div>
+                          <div className="flex flex-col items-start">
+                            <span className="text-xs text-gray-500 font-normal">Chat on WhatsApp</span>
+                            <span>{product.whatsappNumber}</span>
+                          </div>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -601,6 +649,12 @@ function ProductDetailContent() {
           </div>
         </div>
       </div>
+      
+      <OwnerDetailsModal 
+        product={product} 
+        isOpen={isOwnerModalOpen} 
+        onClose={() => setIsOwnerModalOpen(false)} 
+      />
     </div>
   );
 }

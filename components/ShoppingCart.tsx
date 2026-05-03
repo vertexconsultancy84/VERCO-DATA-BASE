@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Plus, Minus, ShoppingCart, CreditCard } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CustomerDetailsForm, { CustomerDetails } from "@/components/CustomerDetailsForm";
+import { getUserSession } from "@/app/actions/auth";
 
 interface CartItem {
   id: string;
@@ -24,6 +25,8 @@ export default function ShoppingCartComponent() {
   const [isOpen, setIsOpen] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const router = useRouter();
 
   // Format price function for consistency with product pages
   const formatPrice = (price?: number | null) => {
@@ -63,6 +66,8 @@ export default function ShoppingCartComponent() {
           return [...prev, { ...newItem, quantity: newItem.quantity || 1 }];
         }
       });
+      // Open cart automatically when item is added
+      setIsOpen(true);
     };
 
     window.addEventListener('addToCart', handleCartUpdate);
@@ -122,12 +127,24 @@ export default function ShoppingCartComponent() {
     localStorage.removeItem("shoppingCart");
   };
 
-  const checkout = () => {
+  const checkout = async () => {
     if (cartItems.length === 0) {
       alert('Your cart is empty!');
       return;
     }
-    setShowCheckout(true);
+    try {
+      const session = await getUserSession();
+      if (!session) {
+        alert("You must log in to checkout and track your orders. Redirecting to login...");
+        router.push("/login?redirect=/view-products");
+        return;
+      }
+      setCurrentSessionId(session.id);
+      setShowCheckout(true);
+    } catch (e) {
+      console.error(e);
+      alert("Error checking authentication.");
+    }
   };
 
   const handleCustomerDetailsSubmit = async (customerDetails: CustomerDetails) => {
@@ -140,7 +157,7 @@ export default function ShoppingCartComponent() {
           productId: item.productId,
           productTitle: item.productTitle,
           productPrice: item.productPrice,
-          userId: null, // Guest order
+          userId: currentSessionId, // Linked to authenticated user
           userName: `${customerDetails.firstName} ${customerDetails.lastName}`,
           userEmail: customerDetails.email,
           customerPhone: customerDetails.phone,

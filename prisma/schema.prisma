@@ -11,7 +11,15 @@ generator client {
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
 }
+
+// Fallback for local development when MongoDB is unavailable
+// To use SQLite, comment out the above and uncomment below:
+// datasource db {
+//   provider = "sqlite"
+//   url      = "file:./dev.db"
+// }
 
 enum ContactStatus {
   New
@@ -66,7 +74,8 @@ model Product {
   title         String
   description    String
   category      ProductCategory @default(OtherProducts)
-  subcategory   String?        // Optional subcategory for Rent and Food
+  subcategory   String?        // Optional subcategory (for-rent, for-sale, etc.)
+  propertyType  String?        // Optional property type (apartment, working-space, family-home, house-for-sale, land-for-building)
   price         Float?         // Optional price field
   latitude      Float?         // Optional latitude for location
   longitude     Float?         // Optional longitude for location
@@ -74,10 +83,15 @@ model Product {
   district      String?        // Optional district for location
   sector        String?        // Optional sector for location
   village       String?        // Optional village for location
+  zone          String?        // Optional zone/neighborhood for location
   available     Boolean        @default(true) // Product availability status
   hidden        Boolean        @default(false) // Admin can hide products from public view
   contactNumber String?        // Optional contact number for this product
   whatsappNumber String?       // Optional WhatsApp number for this product
+  ownerFullName  String?       // Details for Lease Agreement
+  ownerNationality String?     // Details for Lease Agreement
+  ownerID        String?       // Details for Lease Agreement
+  ownerAddress   String?       // Details for Lease Agreement
   media         ProductMedia[]
   orders        Order[]         // Orders for this product
   createdAt     DateTime       @default(now())
@@ -86,7 +100,7 @@ model Product {
 
 model ProductMedia {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  productId    String   @db.ObjectId
+  productId    String   @unique @db.ObjectId
   product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   images       String[] // Array of Cloudinary URLs
   videos       String[] // Array of Cloudinary URLs
@@ -135,6 +149,12 @@ model Order {
   category      String
   subcategory   String?
   status        String   @default("pending") // pending, confirmed, preparing, out_for_delivery, delivered, cancelled
+  paymentStatus String   @default("pending") // pending, paid, verified, failed
+  paymentVerifiedBy String? @db.ObjectId // Admin who verified payment
+  paymentVerifiedAt DateTime? // When payment was verified
+  contractUploaded Boolean @default(false) // Whether signed contract has been uploaded
+  contractFileUrl String? // URL to uploaded signed contract
+  contractSubmittedAt DateTime? // When contract was submitted
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

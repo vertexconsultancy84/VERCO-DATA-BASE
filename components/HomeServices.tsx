@@ -106,7 +106,7 @@ export default function HomeServices() {
   return (
     <section
       ref={sectionRef}
-      className="py-16 px-[3rem] sm:px-[3rem] md:px-[3rem] lg:px-[4rem] bg-white"
+      className="pt-16 pb-0 px-[3rem] sm:px-[3rem] md:px-[3rem] lg:px-[4rem] bg-white"
     >
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
@@ -139,7 +139,7 @@ export default function HomeServices() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-4 items-start">
+        <div className="flex flex-col max-w-4xl mx-auto gap-8 lg:gap-12 mb-0">
           {/* Services List */}
           <div
             key={`services-${animationKey}`}

@@ -6,13 +6,21 @@ import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
 import AboutSection from "@/components/aboutUsSection";
 import ContactSection from "@/components/ContactSection";
-import { Server } from "node:http";
 import ServicesSection from "@/components/ServicesSection";
 import HomeServices from "@/components/HomeServices";
 import { getAllPublishedProducts } from "@/app/actions/product";
-import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
-import ShoppingCartComponent from "@/components/ShoppingCart";
-import { Package, ArrowRight } from "lucide-react";
+import { 
+  ArrowRight, 
+  Home, 
+  Building, 
+  Utensils, 
+  ShoppingBasket, 
+  ChefHat, 
+  Truck, 
+  Croissant, 
+  Coffee,
+  Package
+} from "lucide-react";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -26,7 +34,7 @@ export default function HomePage() {
   const fetchProducts = async () => {
     try {
       const products = await getAllPublishedProducts();
-      setProducts(products.slice(0, 6)); // Show first 6 products
+      setProducts(products);
     } catch (error) {
       console.error("Error fetching products:", error);
       setProducts([]);
@@ -35,22 +43,28 @@ export default function HomePage() {
     }
   };
 
-  // Listen for custom events for real-time updates
-  useEffect(() => {
-    const handleProductUpdate = () => {
-      fetchProducts();
+  // Group products by category and subcategory
+  const getProductsByCategory = () => {
+    const realEstateProducts = products.filter(p => p.category === 'RealEstate');
+    const foodProducts = products.filter(p => p.category === 'Food');
+    const otherProducts = products.filter(p => p.category === 'OtherProducts');
+
+    return {
+      realEstate: {
+        forRent: realEstateProducts.filter(p => p.subcategory === 'for-rent'),
+        forSale: realEstateProducts.filter(p => p.subcategory === 'for-sale')
+      },
+      food: {
+        restaurant: foodProducts.filter(p => p.subcategory === 'restaurant'),
+        grocery: foodProducts.filter(p => p.subcategory === 'grocery'),
+        catering: foodProducts.filter(p => p.subcategory === 'catering'),
+        foodDelivery: foodProducts.filter(p => p.subcategory === 'food-delivery'),
+        bakery: foodProducts.filter(p => p.subcategory === 'bakery'),
+        otherFood: foodProducts.filter(p => p.subcategory === 'other-food')
+      },
+      other: otherProducts
     };
-
-    window.addEventListener('productUpdated', handleProductUpdate);
-    window.addEventListener('productDeleted', handleProductUpdate);
-
-    return () => {
-      window.removeEventListener('productUpdated', handleProductUpdate);
-      window.removeEventListener('productDeleted', handleProductUpdate);
-    };
-  }, []);
-
-  const featuredProducts = products;
+  };
 
   return (
     <main className="min-h-screen">
@@ -59,16 +73,187 @@ export default function HomePage() {
       <AboutSection />
       <HomeServices />
       
-      {/* Featured Products Section */}
-      <section className="py-16 bg-gray-50">
+      {/* Categories Section */}
+      <section className="pt-2 pb-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Featured Products
+              Browse by Category
             </h2>
             <p className="text-lg text-gray-600 mb-8">
-              Discover amazing products and services from our community
+              Explore products and services by category
             </p>
+          </div>
+
+          {/* Real Estate Categories */}
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+              Real Estate
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Link 
+                href="/real-estate/for-rent"
+                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Home className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">For Rent</h4>
+                  <p className="text-sm text-gray-600">Apartments, Houses & Working Spaces</p>
+                  <div className="mt-4 flex items-center justify-center">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      {getProductsByCategory().realEstate.forRent.length} properties
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
+              <Link 
+                href="/real-estate/for-sale"
+                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Building className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">For Sale</h4>
+                  <p className="text-sm text-gray-600">Houses & Properties</p>
+                  <div className="mt-4 flex items-center justify-center">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      {getProductsByCategory().realEstate.forSale.length} properties
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          {/* Food Categories */}
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+              Food & Dining
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <Link 
+                href="/food/restaurant"
+                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Utensils className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Restaurant</h4>
+                  <div className="mt-4 flex items-center justify-center">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      {getProductsByCategory().food.restaurant.length} items
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
+              <Link 
+                href="/food/grocery"
+                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <ShoppingBasket className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Grocery</h4>
+                  <div className="mt-4 flex items-center justify-center">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      {getProductsByCategory().food.grocery.length} items
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
+              <Link 
+                href="/food/catering"
+                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <ChefHat className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Catering</h4>
+                  <div className="mt-4 flex items-center justify-center">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      {getProductsByCategory().food.catering.length} items
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
+              <Link 
+                href="/food/food-delivery"
+                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Truck className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Food Delivery</h4>
+                  <div className="mt-4 flex items-center justify-center">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      {getProductsByCategory().food.foodDelivery.length} items
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
+              <Link 
+                href="/food/bakery"
+                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Croissant className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Bakery</h4>
+                  <div className="mt-4 flex items-center justify-center">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      {getProductsByCategory().food.bakery.length} items
+                    </span>
+                  </div>
+                </div>
+              </Link>
+
+              <Link 
+                href="/food/other-food"
+                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Coffee className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Other Food</h4>
+                  <div className="mt-4 flex items-center justify-center">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      {getProductsByCategory().food.otherFood.length} items
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          {/* Other Products Category */}
+          {getProductsByCategory().other.length > 0 && (
+            <div className="text-center">
+              <Link 
+                href="/other-products"
+                className="inline-flex items-center px-8 py-4 border border-transparent text-base font-medium rounded-xl text-white bg-gray-600 hover:bg-gray-700 transition-colors"
+              >
+                <Package className="w-5 h-5 mr-2" />
+                Other Products ({getProductsByCategory().other.length})
+              </Link>
+            </div>
+          )}
+
+          {/* View All Products Link */}
+          <div className="text-center mt-8">
             <Link 
               href="/view-products"
               className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 transition-colors"
@@ -77,47 +262,11 @@ export default function HomePage() {
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
           </div>
-
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading featured products...</p>
-            </div>
-          ) : featuredProducts.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                No Products Yet
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Be the first to add a product to our marketplace!
-              </p>
-              <Link 
-                href="/signup"
-                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 transition-colors"
-              >
-                Get Started
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredProducts.map((product) => (
-                <SimpleEnhancedProductCard
-                  key={product.id}
-                  product={product}
-                  currentUser={null}
-                  isAdmin={false}
-                  showAddToCart={true}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </section>
 
       <ContactSection />
       <Footer />
-      <ShoppingCartComponent />
     </main>
   );
 }

@@ -162,7 +162,7 @@ export default function AboutUsSection() {
     <section
       ref={sectionRef}
       id="about"
-      className="bg-white py-12 px-[3rem] sm:px-[3rem] md:px-[3rem] lg:px-[4rem]"
+      className="bg-white pt-12 pb-4 px-[3rem] sm:px-[3rem] md:px-[3rem] lg:px-[4rem]"
     >
       <div className="max-w-7xl mx-auto">
         {/* Top Section */}
@@ -258,7 +258,7 @@ export default function AboutUsSection() {
         {/* OUR TEAM */}
         <div
           key={`team-${animationKey}`}
-          className={`bg-[#F17105]/50 rounded-lg shadow-lg mb-8 md:mb-12 transition-all duration-1000 ${
+          className={`bg-[#F17105]/50 rounded-lg shadow-lg mb-2 md:mb-4 transition-all duration-1000 ${
             isVisible
               ? "animate-fadeInUp animation-delay-1000"
               : "opacity-0 translate-y-[50px]"

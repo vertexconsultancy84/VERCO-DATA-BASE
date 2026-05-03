@@ -4,15 +4,14 @@ import { useState, useEffect } from "react";
 
 export default function Hero() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
+
   // Array of images for the carousel
   const heroImages = [
     "/images/vertex1.png",
     "/images/vertex2.png", 
-    "/images/vertex3.jpeg",
-    "/images/vertex4.jpeg",
-    "/images/vertex5.jpeg",
-    
+    "/images/vertex4.jpg.jpeg",
+    "/images/vertex5.jpg.jpeg",
+    "/images/vertex6.jpg.jpeg",
   ];
 
   // Auto-advance images
@@ -34,22 +33,22 @@ export default function Hero() {
             className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-1000 ease-in-out"
             style={{ backgroundImage: `url(${heroImages[currentImageIndex]})` }}
           />
-          
+
           {/* Next Image (sliding in from right) */}
           <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat transform translate-x-full transition-transform duration-1000 ease-in-out"
-            style={{ 
+            style={{
               backgroundImage: `url(${heroImages[(currentImageIndex + 1) % heroImages.length]})`,
               animation: "slideInFromRight 86400000ms infinite" // 24 hours in milliseconds (24 * 60 * 60 * 1000)
             }}
           />
-          
+
           {/* Additional sliding images for continuous effect */}
           {heroImages.slice(2).map((image, index) => (
             <div
               key={index}
               className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-0"
-              style={{ 
+              style={{
                 backgroundImage: `url(${image})`,
                 animation: `slideInFromRight ${86400000 * (index + 2)}ms infinite` // 24 hours * (index + 2)
               }}
@@ -61,7 +60,7 @@ export default function Hero() {
       {/* Enhanced overlay with gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-black/70"></div>
       <div className="absolute inset-0 bg-[#F17105]/10"></div>
-      
+
       {/* Content */}
       <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto mt-[5rem]">
         <h1 className="text-3xl md:text-5xl lg:text-7xl text-[#F17105] font-bold mb-6 leading-tight animate-fadeInUp animation-delay-800">
@@ -72,17 +71,16 @@ export default function Hero() {
           consultancy and professional services to drive your organization
           forward.
         </p>
-        
+
         {/* Image Indicators */}
         <div className="flex justify-center space-x-2 mt-8">
           {heroImages.map((_, index) => (
             <button
               key={index}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                index === currentImageIndex 
-                  ? 'bg-[#F17105] w-8' 
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${index === currentImageIndex
+                  ? 'bg-[#F17105] w-8'
                   : 'bg-white/50 hover:bg-white/70'
-              }`}
+                }`}
               onClick={() => setCurrentImageIndex(index)}
             />
           ))}

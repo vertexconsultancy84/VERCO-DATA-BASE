@@ -2,15 +2,17 @@ import * as cloudinary from 'cloudinary';
 
 // Configure Cloudinary
 cloudinary.v2.config({
-  cloud_name: 'dzikttrya',
-  api_key: '466747726444735',
-  api_secret: 'Kcg7jS0ApBQVUc45WPFg8eZQ7vA',
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'depwopvo1',
+  api_key: process.env.CLOUDINARY_API_KEY || '748922292817581',
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'HtNpOdQGT-kfTIWQ811PQx0mqW4',
   secure: true,
 });
 
 // Function to upload file to Cloudinary
 export async function uploadToCloudinary(file: File | Buffer, folder: string = 'products') {
   try {
+    console.log(`Starting Cloudinary upload for ${file instanceof File ? file.name : 'buffer'} to folder: ${folder}`);
+    
     return new Promise((resolve, reject) => {
       const resourceType = file instanceof File 
         ? (file.type.startsWith('video/') ? 'video' : 'image')
@@ -21,6 +23,7 @@ export async function uploadToCloudinary(file: File | Buffer, folder: string = '
         resource_type: resourceType,
         public_id: `${Date.now()}-${file instanceof File ? file.name.split('.')[0] : 'upload'}`,
         overwrite: true,
+        eager_async: false, // Make eager transformations synchronous
       };
 
       // Add video-specific optimizations
@@ -44,6 +47,8 @@ export async function uploadToCloudinary(file: File | Buffer, folder: string = '
               throw new Error(`File size too large. Maximum size is ${maxSize / 1024 / 1024}MB`);
             }
             
+            console.log(`File size: ${file.size / 1024 / 1024}MB, type: ${file.type}`);
+            
             // Use arrayBuffer() for server-side processing (FileReader not available in Node.js)
             const arrayBuffer = await file.arrayBuffer();
             uploadData = Buffer.from(arrayBuffer);
@@ -54,12 +59,16 @@ export async function uploadToCloudinary(file: File | Buffer, folder: string = '
           throw new Error(`File processing failed: ${error.message}`);
         }
 
+        console.log(`Starting upload to Cloudinary with options:`, JSON.stringify(uploadOptions, null, 2));
+
         cloudinary.v2.uploader.upload_stream(
           uploadOptions,
           (error: any, result: any) => {
             if (error) {
+              console.error('Cloudinary upload error:', error);
               reject(error);
             } else {
+              console.log('Cloudinary upload success:', result.secure_url);
               resolve({
                 url: result.secure_url,
                 public_id: result.public_id,
@@ -73,6 +82,7 @@ export async function uploadToCloudinary(file: File | Buffer, folder: string = '
       handleUpload();
     });
   } catch (error) {
+    console.error('Cloudinary upload function error:', error);
     throw new Error(`Cloudinary upload failed: ${error}`);
   }
 }

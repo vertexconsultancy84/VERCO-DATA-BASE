@@ -53,13 +53,15 @@ export async function GET(
         contactNumber: (product as any).contactNumber || null,
         whatsappNumber: (product as any).whatsappNumber || null,
         media: mediaData
-          ? {
-              images: mediaData.images,
-              videos: mediaData.videos,
-              mainImage: mediaData.mainImage,
-              mainVideo: mediaData.mainVideo,
-            }
-          : null,
+          ? [
+              {
+                images: mediaData.images || [],
+                videos: mediaData.videos || [],
+                mainImage: mediaData.mainImage || null,
+                mainVideo: mediaData.mainVideo || null,
+              },
+            ]
+          : [],
       },
     });
   } catch (error) {

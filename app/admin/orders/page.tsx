@@ -17,7 +17,7 @@ export default function AdminOrdersDashboard() {
     try {
       const response = await fetch('/api/orders');
       const result = await response.json();
-      
+
       if (result.success) {
         setOrders(result.orders);
       } else {
@@ -40,9 +40,9 @@ export default function AdminOrdersDashboard() {
         },
         body: JSON.stringify({ orderId, status: newStatus }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         fetchOrders(); // Refresh orders
       } else {
@@ -58,7 +58,7 @@ export default function AdminOrdersDashboard() {
     if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
       return;
     }
-    
+
     try {
       const response = await fetch('/api/orders', {
         method: 'DELETE',
@@ -67,9 +67,9 @@ export default function AdminOrdersDashboard() {
         },
         body: JSON.stringify({ orderId }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         alert('Order deleted successfully');
         fetchOrders(); // Refresh orders
@@ -126,8 +126,8 @@ export default function AdminOrdersDashboard() {
         </div>
 
         {/* Order Component */}
-        <OrderComponent 
-          orders={orders} 
+        <OrderComponent
+          orders={orders}
           onUpdateStatus={updateOrderStatus}
           onDeleteOrder={deleteOrder}
           onDownloadOrder={downloadOrder}

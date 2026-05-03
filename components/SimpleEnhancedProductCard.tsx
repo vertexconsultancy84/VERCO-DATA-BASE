@@ -6,8 +6,10 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Eye, Edit, Trash2, ShoppingCart } from "lucide-react";
+import { MapPin, Eye, Edit, Trash2, ShoppingCart, CreditCard, Key } from "lucide-react";
 import { deleteProduct } from "@/app/actions/product";
+import LeaseAgreementModal from "./LeaseAgreementModal";
+import OwnerDetailsModal from "./OwnerDetailsModal";
 
 interface Product {
   id: string;
@@ -15,6 +17,7 @@ interface Product {
   description: string;
   category: string;
   subcategory?: string | null;
+  propertyType?: string | null; // Added propertyType
   price: number | null | undefined;
   latitude?: number | null;
   longitude?: number | null;
@@ -22,6 +25,7 @@ interface Product {
   district?: string | null;
   sector?: string | null;
   village?: string | null;
+  zone?: string | null;
   available: boolean;
   hidden?: boolean;
   contactNumber?: string | null;
@@ -57,6 +61,8 @@ interface SimpleEnhancedProductCardProps {
 export default function SimpleEnhancedProductCard({ product, currentUser, isAdmin = false, showAddToCart = false }: SimpleEnhancedProductCardProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [isLeaseModalOpen, setIsLeaseModalOpen] = useState(false);
+  const [isOwnerModalOpen, setIsOwnerModalOpen] = useState(false);
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371; // Earth's radius in km
@@ -86,6 +92,11 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
   };
 
   const handleAddToCart = async (product: Product) => {
+    if (product.propertyType === 'apartment') {
+      setIsLeaseModalOpen(true);
+      return;
+    }
+
     try {
       // Add to shopping cart via custom event
       const cartItem = {
@@ -157,11 +168,15 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
           {(() => {
             // Try to get the main image from different sources
             let imageUrl = null;
+            // Normalize media data if it's an array
+            const media = Array.isArray(product.media) && product.media.length > 0 
+              ? product.media[0] 
+              : product.media;
             
-            if (product.media?.mainImage) {
-              imageUrl = product.media.mainImage;
-            } else if (product.media?.images && product.media.images.length > 0) {
-              imageUrl = product.media.images[0];
+            if (media?.mainImage) {
+              imageUrl = media.mainImage;
+            } else if (media?.images && media.images.length > 0) {
+              imageUrl = media.images[0];
             } else if (product.image) {
               imageUrl = product.image;
             } else if (product.mainImage) {
@@ -225,8 +240,8 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
                 ? `${distance.toFixed(1)} km away`
                 : product.latitude != null && product.longitude != null
                   ? `${product.latitude.toFixed(4)}, ${product.longitude.toFixed(4)}`
-                  : product.province || product.district || product.sector || product.village
-                  ? `${product.province ? product.province + ', ' : ''}${product.district ? product.district + ', ' : ''}${product.sector ? product.sector + ', ' : ''}${product.village || ''}`.replace(/, $/, '')
+                  : product.province || product.district || product.sector || product.village || product.zone
+                  ? [product.province, product.district, product.sector, product.village, product.zone].filter(Boolean).join(", ")
                   : "Location not specified"
               }
             </span>
@@ -240,10 +255,9 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
                 <div>
                   <p className="text-xs text-green-600 font-medium">Product Location</p>
                   <p className="text-sm font-semibold text-gray-900">
-                    {product.province && `${product.province}, `}
-                    {product.district && `${product.district}, `}
-                    {product.sector && `${product.sector}, `}
-                    {product.village && product.village}
+                    {[product.province, product.district, product.sector, product.village, product.zone]
+                      .filter(Boolean)
+                      .join(", ")}
                   </p>
                 </div>
               </div>
@@ -271,22 +285,69 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
 
           {/* Action Buttons */}
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="flex-1 text-xs h-8 border-blue-600 text-blue-600 hover:bg-blue-50"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsOwnerModalOpen(true);
+              }}
+            >
+              Owner Info
+            </Button>
             <Link href={`/product-details?id=${product.id}`} className="flex-1">
-              <Button variant="outline" size="sm" className="w-full">
-                <Eye className="h-4 w-4 mr-2" /> View Details
+              <Button variant="outline" size="sm" className="w-full h-8">
+                <Eye className="h-4 w-4 mr-1" /> Details
               </Button>
             </Link>
 
-            {/* Add to Cart button for Food category */}
-            {product.category === "Food" && showAddToCart && (
-              <Button 
-                variant="default" 
-                size="sm" 
-                className="bg-orange-600 hover:bg-orange-700"
-                onClick={() => handleAddToCart(product)}
-              >
-                <ShoppingCart className="h-4 w-4 mr-2" /> Add to Cart
-              </Button>
+            {/* Specialized Action Buttons based on category/propertyType */}
+            {showAddToCart && (
+              <>
+                {/* Buy Now button for Sale Real Estate */}
+                {product.category === "RealEstate" && 
+                 (product.propertyType === "house-for-sale" || product.propertyType === "land-for-building") && (
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 h-8"
+                    onClick={() => handleAddToCart(product)}
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" /> Buy Now
+                  </Button>
+                )}
+
+                {/* Rent Now button for Rent Real Estate */}
+                {product.category === "RealEstate" && 
+                 (product.propertyType === "apartment" || 
+                  product.propertyType === "working-space" || 
+                  product.propertyType === "home-less-than-3" || 
+                  product.propertyType === "home-greater-than-3") && (
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="w-full bg-blue-600 hover:bg-blue-700 h-8"
+                    onClick={() => handleAddToCart(product)}
+                  >
+                    <Key className="h-4 w-4 mr-2" />
+                    {product.propertyType === 'apartment' ? 'Book' : 'Rent'}
+                  </Button>
+                )}
+
+                {/* Add to Cart button for Food category */}
+                {product.category === "Food" && (
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="bg-orange-600 hover:bg-orange-700"
+                    onClick={() => handleAddToCart(product)}
+                  >
+                    <ShoppingCart className="h-4 w-4 mr-2" /> Add to Cart
+                  </Button>
+                )}
+              </>
             )}
 
             {(currentUser && product.user && (product.user.id === currentUser.id || isAdmin)) && (
@@ -308,6 +369,16 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
           </div>
         </div>
       </CardContent>
+      <LeaseAgreementModal 
+        product={product as any} 
+        isOpen={isLeaseModalOpen} 
+        onClose={() => setIsLeaseModalOpen(false)} 
+      />
+      <OwnerDetailsModal 
+        product={product} 
+        isOpen={isOwnerModalOpen} 
+        onClose={() => setIsOwnerModalOpen(false)} 
+      />
     </Card>
   );
 }

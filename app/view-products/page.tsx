@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { getAllPublishedProducts } from "@/app/actions/product";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
 import ShoppingCartComponent from "@/components/ShoppingCart";
-import { Package, Star, Users, Filter } from "lucide-react";
+import { Package, Star, Users, Filter, Home, Building, Utensils, ShoppingBasket, ChefHat, Truck, Croissant, Coffee } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -19,7 +21,7 @@ const categoryLabels = {
 
 const rentSubcategories = {
   apartment: "Apartment",
-  enterprise: "Enterprise", 
+  enterprise: "Enterprise",
   home: "Home",
   "other-assets": "Other Assets"
 };
@@ -66,11 +68,15 @@ interface ViewProduct {
   };
 }
 
-export default function ViewProductsPage() {
+function ViewProductsContent() {
+  const searchParams = useSearchParams();
+  const initialCategory = searchParams.get("category") || "all";
+  const initialSubcategory = searchParams.get("subcategory") || "all";
+
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedSubcategory, setSelectedSubcategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  const [selectedSubcategory, setSelectedSubcategory] = useState(initialSubcategory);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -97,15 +103,29 @@ export default function ViewProductsPage() {
   }, [products, selectedCategory, selectedSubcategory]);
 
   const filterProducts = () => {
-    if (selectedCategory === "all") {
-      setFilteredProducts(products);
-    } else if (selectedCategory === "Rent" && selectedSubcategory !== "all") {
-      setFilteredProducts(products.filter(product => 
-        product.category === "Rent" && product.subcategory === selectedSubcategory
-      ));
-    } else {
-      setFilteredProducts(products.filter(product => product.category === selectedCategory));
+    let filtered = products;
+
+    console.log("=== FILTER DEBUG ===");
+    console.log("Selected Category:", selectedCategory);
+    console.log("Selected Subcategory:", selectedSubcategory);
+    console.log("Total Products:", products.length);
+
+    // Category Filter
+    if (selectedCategory && selectedCategory !== "all") {
+      filtered = filtered.filter(p => p.category === selectedCategory);
+      console.log("After category filter:", filtered.length);
     }
+
+    // Subcategory Filter
+    if (selectedSubcategory && selectedSubcategory !== "all") {
+      filtered = filtered.filter(p => p.subcategory === selectedSubcategory);
+      console.log("After subcategory filter:", filtered.length);
+    }
+
+    console.log("Final filtered count:", filtered.length);
+    console.log("==================");
+
+    setFilteredProducts(filtered);
   };
 
   const fetchProducts = async () => {
@@ -113,21 +133,10 @@ export default function ViewProductsPage() {
       setLoading(true);
       console.log("=== VIEW PRODUCTS PAGE DEBUG ===");
       const fetchedProducts = await getAllPublishedProducts();
-      
+
       console.log("Products fetched:", fetchedProducts.length);
-      if (fetchedProducts.length > 0) {
-        console.log("Sample product with location:", {
-          id: fetchedProducts[0].id,
-          title: fetchedProducts[0].title,
-          category: fetchedProducts[0].category,
-          province: fetchedProducts[0].province,
-          district: fetchedProducts[0].district,
-          sector: fetchedProducts[0].sector,
-          village: fetchedProducts[0].village
-        });
-      }
       console.log("=================================");
-      
+
       setProducts(fetchedProducts);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -138,22 +147,16 @@ export default function ViewProductsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30">
-        <Header />
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="text-center">
-            <p>Loading products...</p>
-          </div>
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="text-center">
+          <p>Loading products...</p>
         </div>
-        <Footer />
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30">
-      <Header />
-      
+    <>
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-r from-orange-600 to-orange-500 text-white">
         <div className="absolute inset-0 bg-black/10"></div>
@@ -190,48 +193,131 @@ export default function ViewProductsPage() {
         </div>
       </div>
 
-      {/* Category Filter Section */}
+      {/* Categories Section */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Filter className="h-5 w-5 text-orange-500" />
-              <h3 className="text-lg font-semibold text-gray-900">Filter by Category</h3>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                Showing {filteredProducts.length} of {products.length} products
-              </span>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="RealEstate">Real Estate</SelectItem>
-                  <SelectItem value="Food">Food</SelectItem>
-                  <SelectItem value="Rent">Rent</SelectItem>
-                  <SelectItem value="OtherProducts">Other Products</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {/* Subcategory filter - only show for Rent category */}
-              {selectedCategory === "Rent" && (
-                <Select value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Rent</SelectItem>
-                    <SelectItem value="apartment">Apartment</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                    <SelectItem value="home">Home</SelectItem>
-                    <SelectItem value="other-assets">Other Assets</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+        {/* Real Estate Categories */}
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+            Real Estate
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Link
+              href="/real-estate/for-rent"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Home className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">For Rent</h4>
+                <p className="text-sm text-gray-600">Apartments, Houses & Working Spaces</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/real-estate/for-sale"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Building className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">For Sale</h4>
+                <p className="text-sm text-gray-600">Houses & Properties</p>
+              </div>
+            </Link>
           </div>
+        </div>
+
+        {/* Food Categories */}
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center">
+            Food & Dining
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <Link
+              href="/food/restaurant"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Utensils className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">Restaurant</h4>
+              </div>
+            </Link>
+
+            <Link
+              href="/food/grocery"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <ShoppingBasket className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">Grocery</h4>
+              </div>
+            </Link>
+
+            <Link
+              href="/food/catering"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <ChefHat className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">Catering</h4>
+              </div>
+            </Link>
+
+            <Link
+              href="/food/food-delivery"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Truck className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">Food Delivery</h4>
+              </div>
+            </Link>
+
+            <Link
+              href="/food/bakery"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Croissant className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">Bakery</h4>
+              </div>
+            </Link>
+
+            <Link
+              href="/food/other-food"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Coffee className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">Other Food</h4>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        {/* Other Products Category */}
+        <div className="text-center">
+          <Link
+            href="/other-products"
+            className="inline-flex items-center px-8 py-4 border border-transparent text-base font-medium rounded-xl text-white bg-gray-600 hover:bg-gray-700 transition-colors"
+          >
+            <Package className="w-5 h-5 mr-2" />
+            Other Products
+          </Link>
         </div>
       </div>
 
@@ -241,12 +327,12 @@ export default function ViewProductsPage() {
           <div className="text-center py-12">
             <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {selectedCategory === "all" ? "No Products Yet" : "No Products in This Category"}
+              {selectedCategory === "all" ? "No Products Yet" : "No Products Found"}
             </h3>
             <p className="text-gray-600">
-              {selectedCategory === "all" 
-                ? "Be the first to add a product to our marketplace!" 
-                : "Try selecting a different category or be the first to add a product here."
+              {selectedCategory === "all"
+                ? "Be the first to add a product to our marketplace!"
+                : "Try selecting a different category or check back later."
               }
             </p>
           </div>
@@ -264,7 +350,21 @@ export default function ViewProductsPage() {
           </div>
         )}
       </div>
+    </>
+  );
+}
 
+export default function ViewProductsPage() {
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30">
+      <Header />
+      <Suspense fallback={
+        <div className="max-w-7xl mx-auto px-4 py-8 text-center">
+          <p>Loading...</p>
+        </div>
+      }>
+        <ViewProductsContent />
+      </Suspense>
       <Footer />
       <ShoppingCartComponent />
     </main>

@@ -1,3 +1,5 @@
+"use client";
+
 import { MessageSquare, Send } from "lucide-react";
 import Link from "next/link";
 
@@ -59,6 +61,7 @@ const services = [
     image: "/images/real-estate.jpg?height=300&width=400",
     date: "Property",
     comments: "Expert",
+    link: "/real-estate/for-rent/apartment"
   },
 
   {
@@ -156,7 +159,14 @@ export default function ServicesSection() {
           {services.map((service) => (
             <div
               key={service.id}
-              className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
+              className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 ${
+                service.link ? 'cursor-pointer' : ''
+              }`}
+              onClick={() => {
+                if (service.link) {
+                  window.location.href = service.link;
+                }
+              }}
             >
               <div className="flex">
                 <div className="relative w-2/5 h-48">

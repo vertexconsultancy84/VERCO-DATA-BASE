@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Clock, CheckCircle, XCircle, User, Package, Download, Trash2 } from "lucide-react";
+import { ShoppingCart, Clock, CheckCircle, XCircle, User, Package, Download, Trash2, FileText, MessageCircle, Mail } from "lucide-react";
 
 interface Order {
   id: string;
@@ -24,6 +24,7 @@ interface Order {
   subcategory?: string;
   status: string;
   createdAt: string;
+  contractFileUrl?: string;
 }
 
 interface OrderComponentProps {
@@ -37,6 +38,7 @@ export default function OrderComponent({ orders, onUpdateStatus, onDeleteOrder, 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending": return "bg-yellow-100 text-yellow-800";
+      case "contract_approved": return "bg-indigo-100 text-indigo-800";
       case "confirmed": return "bg-blue-100 text-blue-800";
       case "preparing": return "bg-orange-100 text-orange-800";
       case "out_for_delivery": return "bg-purple-100 text-purple-800";
@@ -50,6 +52,7 @@ export default function OrderComponent({ orders, onUpdateStatus, onDeleteOrder, 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending": return <Clock className="h-4 w-4" />;
+      case "contract_approved": return <CheckCircle className="h-4 w-4 text-indigo-600" />;
       case "confirmed": return <CheckCircle className="h-4 w-4" />;
       case "preparing": return <Package className="h-4 w-4" />;
       case "out_for_delivery": return <Package className="h-4 w-4" />;
@@ -110,7 +113,7 @@ export default function OrderComponent({ orders, onUpdateStatus, onDeleteOrder, 
               <Package className="h-8 w-8 text-blue-600 mr-3" />
               <div>
                 <p className="text-2xl font-bold text-gray-900">
-                  {orders.filter(o => ["confirmed", "preparing", "ready"].includes(o.status)).length}
+                  {orders.filter(o => ["contract_approved", "confirmed", "preparing", "ready"].includes(o.status)).length}
                 </p>
                 <p className="text-sm text-gray-600">In Progress</p>
               </div>
@@ -239,13 +242,23 @@ export default function OrderComponent({ orders, onUpdateStatus, onDeleteOrder, 
                         <div className="flex flex-wrap gap-2">
                           {order.status === "pending" && (
                             <>
-                              <Button
-                                size="sm"
-                                onClick={() => onUpdateStatus(order.id, "confirmed")}
-                                className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
-                              >
-                                Confirm
-                              </Button>
+                              {order.category === "Food" ? (
+                                <Button
+                                  size="sm"
+                                  onClick={() => onUpdateStatus(order.id, "confirmed")}
+                                  className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
+                                >
+                                  Confirm
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  onClick={() => onUpdateStatus(order.id, "contract_approved")}
+                                  className="bg-indigo-600 hover:bg-indigo-700 flex-1 sm:flex-none text-white"
+                                >
+                                  Prove Contract
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="destructive"
@@ -257,7 +270,7 @@ export default function OrderComponent({ orders, onUpdateStatus, onDeleteOrder, 
                             </>
                           )}
                           
-                          {order.status === "confirmed" && (
+                          {(order.status === "confirmed" || order.status === "contract_approved") && (
                             <Button
                               size="sm"
                               onClick={() => onUpdateStatus(order.id, "preparing")}
@@ -309,11 +322,48 @@ export default function OrderComponent({ orders, onUpdateStatus, onDeleteOrder, 
                         
                         {/* Download and Delete buttons - always visible */}
                         <div className="flex flex-wrap gap-2 border-t pt-3">
+                          {order.contractFileUrl && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => window.open(order.contractFileUrl, '_blank')}
+                              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 flex-1 sm:flex-none"
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              View Contract Paper
+                            </Button>
+                          )}
+                          
+                          {order.customerPhone && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const phone = order.customerPhone?.replace(/\D/g, '');
+                                window.open(`https://wa.me/${phone}`, '_blank');
+                              }}
+                              className="text-green-600 border-green-200 hover:bg-green-50 flex-1 sm:flex-none"
+                            >
+                              <MessageCircle className="h-4 w-4 mr-1" />
+                              WhatsApp
+                            </Button>
+                          )}
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(`mailto:${order.userEmail}`, '_blank')}
+                            className="text-blue-600 border-blue-200 hover:bg-blue-50 flex-1 sm:flex-none"
+                          >
+                            <Mail className="h-4 w-4 mr-1" />
+                            Email
+                          </Button>
+
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => onDownloadOrder(order)}
-                            className="text-blue-600 hover:text-blue-700 flex-1 sm:flex-none"
+                            className="text-gray-600 hover:text-gray-700 flex-1 sm:flex-none"
                           >
                             <Download className="h-4 w-4 mr-1" />
                             Download
