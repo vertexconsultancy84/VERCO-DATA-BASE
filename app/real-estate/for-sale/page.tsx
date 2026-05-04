@@ -203,7 +203,8 @@ export default function ForSalePage() {
     return videos;
   };
 
-  const formatPrice = (price: number): string => {
+  const formatPrice = (price: number | null | undefined): string => {
+    if (price == null) return "Price not set";
     return `FRW ${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
