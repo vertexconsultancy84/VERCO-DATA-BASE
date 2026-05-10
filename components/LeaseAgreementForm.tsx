@@ -23,6 +23,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 interface Product {
   id: string;
@@ -125,18 +127,71 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFormData(prev => ({ ...prev, signedContractFile: e.target.files![0] }));
+      const file = e.target.files[0];
+      if (file.size > 10 * 1024 * 1024 && !file.type.startsWith('image/')) {
+        alert("The selected file is very large (" + (file.size / 1024 / 1024).toFixed(1) + "MB). If it is a PDF, please try to compress it or take a photo instead, as the limit is 10MB for documents.");
+      }
+      setFormData(prev => ({ ...prev, signedContractFile: file }));
     }
   };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     let contractFileUrl = null;
+    let fileToUpload = formData.signedContractFile;
 
-    if (formData.signedContractFile) {
+    if (fileToUpload) {
+      // Compress if it's a large image (> 2MB)
+      if (fileToUpload.type.startsWith('image/') && fileToUpload.size > 2 * 1024 * 1024) {
+        try {
+          console.log(`Compressing large image: ${fileToUpload.size / 1024 / 1024}MB`);
+          const compressedBlob = await new Promise<Blob>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(fileToUpload!);
+            reader.onload = (event) => {
+              const img = new Image();
+              img.src = event.target?.result as string;
+              img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                // Max dimensions 2500px
+                const maxDim = 2500;
+                if (width > maxDim || height > maxDim) {
+                  if (width > height) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                  } else {
+                    width = Math.round((width * maxDim) / height);
+                    height = maxDim;
+                  }
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => {
+                  if (blob) resolve(blob);
+                  else reject(new Error('Canvas to Blob failed'));
+                }, 'image/jpeg', 0.7); // 0.7 quality
+              };
+              img.onerror = reject;
+            };
+            reader.onerror = reject;
+          });
+          
+          fileToUpload = new File([compressedBlob], fileToUpload.name, { type: 'image/jpeg' });
+          console.log(`Compressed to: ${fileToUpload.size / 1024 / 1024}MB`);
+        } catch (error) {
+          console.error('Compression failed, uploading original:', error);
+        }
+      }
+
       try {
         const uploadData = new FormData();
-        uploadData.append('file', formData.signedContractFile);
+        uploadData.append('file', fileToUpload);
         const uploadResponse = await fetch('/api/upload-contract-file', {
           method: 'POST',
           body: uploadData,
@@ -163,14 +218,16 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
         },
         body: JSON.stringify({
           productId: product.id,
-          tenantName: formData.tenantName,
+          tenantName: formData.tenantName || "Client",
           tenantNationality: formData.tenantNationality,
           tenantID: formData.tenantID,
           tenantAddress: formData.tenantAddress,
-          tenantContact: formData.tenantContact,
-          userName: formData.tenantName,
-          userEmail: formData.tenantContact.includes('@') ? formData.tenantContact : `${formData.tenantName.replace(/\s+/g, '').toLowerCase()}@example.com`,
-          customerPhone: formData.tenantContact,
+          tenantContact: formData.tenantContact || "N/A",
+          userName: formData.tenantName || "Client",
+          userEmail: formData.tenantContact && formData.tenantContact.includes('@') 
+            ? formData.tenantContact 
+            : `${(formData.tenantName || "client").replace(/\s+/g, '').toLowerCase()}@example.com`,
+          customerPhone: formData.tenantContact || "N/A",
           deliveryAddress: formData.tenantAddress,
           village: product.village,
           productTitle: product.title,
@@ -198,13 +255,50 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
     }
   };
 
-  const handlePrintAction = () => {
-    setFormData(prev => ({ ...prev, hasDownloaded: true }));
-    window.print();
-  };
+  const handleDownloadPDF = async () => {
+    const element = document.getElementById("pdf-content");
+    if (!element) return;
 
-  const handlePrint = () => {
-    window.print();
+    setIsSubmitting(true);
+    try {
+      // Create a temporary container to render the full content for PDF
+      // This ensures we get the full document even if it's scrollable
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      let heightLeft = pdfHeight;
+      let position = 0;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`Lease_Agreement_${product.title.replace(/\s+/g, '_')}.pdf`);
+      setFormData(prev => ({ ...prev, hasDownloaded: true }));
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const fullAddress = [
@@ -223,11 +317,14 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
           <h1 className="text-xl font-bold text-gray-800 uppercase tracking-tight">Residential Lease Agreement</h1>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" size="sm" onClick={handlePrint}>
-            <Printer className="w-4 h-4 mr-2" /> Print
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" /> Download PDF
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleDownloadPDF}
+            disabled={isSubmitting}
+            className="bg-blue-600 text-white hover:bg-blue-700 border-none"
+          >
+            <Download className="w-4 h-4 mr-2" /> {isSubmitting ? "Generating..." : "Download PDF"}
           </Button>
         </div>
       </div>
@@ -247,10 +344,11 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
             <div className="mt-3 p-3 bg-white/50 rounded-lg border border-blue-100">
               <p className="text-xs font-bold text-blue-800 uppercase mb-2">Process Overview:</p>
               <ul className="text-xs text-blue-700 space-y-1 list-disc ml-4">
-                <li>Fill in the Tenant details in the form below.</li>
-                <li>Download and Print the completed agreement.</li>
+                <li>Review the contract details below.</li>
+                <li>Download the agreement as a PDF.</li>
+                <li>Print the document and fill the remaining details **manually using a pen**.</li>
                 <li>Sign the document physically along with any witnesses.</li>
-                <li>Scan or take a photo and **upload the signed copy** at the bottom to submit.</li>
+                <li>Scan or take a clear photo and **upload the signed copy** below to submit.</li>
               </ul>
             </div>
             <div className="pt-3">
@@ -267,7 +365,22 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
           </div>
         </div>
 
-        <div className="space-y-8 text-gray-800">
+        <div id="pdf-content" className="contract-document">
+          <header className="contract-document-header">
+            <p className="contract-document-header-kicker">Vertex Consulting · Official Agreement</p>
+            <h1 className="contract-document-header-title">Residential Lease Agreement</h1>
+            <div className="contract-document-meta">
+              <span>
+                Premises: <strong className="text-slate-700">{product.title}</strong>
+              </span>
+              <span className="hidden sm:inline text-slate-300" aria-hidden>
+                |
+              </span>
+              <span>Effective date as stated in the preamble below</span>
+            </div>
+          </header>
+
+          <div className="space-y-8 text-[15px] leading-[1.68] text-slate-900">
 
           {/* Introductory Paragraph */}
           <section className="text-justify leading-relaxed">
@@ -288,38 +401,62 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
               <User className="w-5 h-5 text-blue-600" /> 1. PARTIES
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="contract-parties-grid">
               {/* Landlord */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-blue-700">1.1 Landlord (Lessor)</h3>
+                <h3 className="font-semibold text-blue-900 border-b border-slate-300 pb-1 inline-block font-sans tracking-wide">
+                  1.1 Landlord (Lessor)
+                </h3>
                 <div className="space-y-2">
-                  <Label>Full Name</Label>
-                  <Input name="landlordName" value={formData.landlordName} onChange={handleInputChange} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0" />
-                  <Label>Nationality</Label>
-                  <Input name="landlordNationality" value={formData.landlordNationality} onChange={handleInputChange} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0" />
-                  <Label>National ID / Passport No</Label>
-                  <Input name="landlordID" value={formData.landlordID} onChange={handleInputChange} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0" />
-                  <Label>Current Address</Label>
-                  <Input name="landlordAddress" value={formData.landlordAddress} onChange={handleInputChange} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0" />
-                  <Label>Telephone / Email</Label>
-                  <Input name="landlordContact" value={formData.landlordContact} onChange={handleInputChange} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0" />
+                  <div className="relative mb-4">
+                    <Label className="text-[10px] font-bold text-blue-900 uppercase tracking-wide">Full Name</Label>
+                    <Input name="landlordName" value={formData.landlordName} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 focus-visible:ring-0 h-10 bg-transparent text-gray-800" />
+                  </div>
+                  <div className="relative mb-4">
+                    <Label className="text-[10px] font-bold text-blue-900 uppercase tracking-wide">Nationality</Label>
+                    <Input name="landlordNationality" value={formData.landlordNationality} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 focus-visible:ring-0 h-10 bg-transparent text-gray-800" />
+                  </div>
+                  <div className="relative mb-4">
+                    <Label className="text-[10px] font-bold text-blue-900 uppercase tracking-wide">National ID / Passport No</Label>
+                    <Input name="landlordID" value={formData.landlordID} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 focus-visible:ring-0 h-10 bg-transparent text-gray-800" />
+                  </div>
+                  <div className="relative mb-4">
+                    <Label className="text-[10px] font-bold text-blue-900 uppercase tracking-wide">Current Address</Label>
+                    <Input name="landlordAddress" value={formData.landlordAddress} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 focus-visible:ring-0 h-10 bg-transparent text-gray-800" />
+                  </div>
+                  <div className="relative mb-4">
+                    <Label className="text-[10px] font-bold text-blue-900 uppercase tracking-wide">Telephone / Email</Label>
+                    <Input name="landlordContact" value={formData.landlordContact} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 focus-visible:ring-0 h-10 bg-transparent text-gray-800" />
+                  </div>
                 </div>
               </div>
 
               {/* Tenant */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-blue-700">1.2 Tenant (Lessee)</h3>
+                <h3 className="font-semibold text-blue-900 border-b border-slate-300 pb-1 inline-block font-sans tracking-wide">
+                  1.2 Tenant (Lessee)
+                </h3>
                 <div className="space-y-2">
-                  <Label>Full Name</Label>
-                  <Input name="tenantName" value={formData.tenantName} onChange={handleInputChange} placeholder="Required" className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0 border-blue-200" />
-                  <Label>Nationality</Label>
-                  <Input name="tenantNationality" value={formData.tenantNationality} onChange={handleInputChange} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0" />
-                  <Label>National ID / Passport No</Label>
-                  <Input name="tenantID" value={formData.tenantID} onChange={handleInputChange} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0" />
-                  <Label>Current Address</Label>
-                  <Input name="tenantAddress" value={formData.tenantAddress} onChange={handleInputChange} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0" />
-                  <Label>Telephone / Email</Label>
-                  <Input name="tenantContact" value={formData.tenantContact} onChange={handleInputChange} placeholder="Required - Email or phone number" className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0 border-blue-200" />
+                  <div className="relative mb-4">
+                    <Label className="text-[10px] font-bold text-blue-900 uppercase tracking-wide">Full Legal Name</Label>
+                    <Input name="tenantName" value={formData.tenantName} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-blue-400 rounded-none px-0 focus-visible:ring-0 h-10 bg-transparent text-gray-800" />
+                  </div>
+                  <div className="relative mb-4">
+                    <Label className="text-[10px] font-bold text-blue-900 uppercase tracking-wide">Nationality</Label>
+                    <Input name="tenantNationality" value={formData.tenantNationality} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-blue-400 rounded-none px-0 focus-visible:ring-0 h-10 bg-transparent text-gray-800" />
+                  </div>
+                  <div className="relative mb-4">
+                    <Label className="text-[10px] font-bold text-blue-900 uppercase tracking-wide">National ID / Passport No</Label>
+                    <Input name="tenantID" value={formData.tenantID} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-blue-400 rounded-none px-0 focus-visible:ring-0 h-10 bg-transparent text-gray-800" />
+                  </div>
+                  <div className="relative mb-4">
+                    <Label className="text-[10px] font-bold text-blue-900 uppercase tracking-wide">Current Address</Label>
+                    <Input name="tenantAddress" value={formData.tenantAddress} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-blue-400 rounded-none px-0 focus-visible:ring-0 h-10 bg-transparent text-gray-800" />
+                  </div>
+                  <div className="relative mb-4">
+                    <Label className="text-[10px] font-bold text-blue-900 uppercase tracking-wide">Telephone / Email</Label>
+                    <Input name="tenantContact" value={formData.tenantContact} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-blue-400 rounded-none px-0 focus-visible:ring-0 h-10 bg-transparent text-gray-800" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -334,9 +471,9 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
               <MapPin className="w-5 h-5 text-blue-600" /> 2. PREMISES
             </h2>
             <p className="mb-4">The Landlord hereby leases to the Tenant the residential property located at:</p>
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
-              <p className="font-bold text-lg">{product.title}</p>
-              <p className="text-gray-600">{fullAddress}</p>
+            <div className="contract-callout-box mb-4 font-sans">
+              <p className="font-bold text-lg border-b border-slate-300 pb-2 mb-2">{product.title}</p>
+              <p className="text-slate-600">{fullAddress}</p>
             </div>
             <p className="text-sm">This includes all buildings, fixtures, fittings, installations, and improvements (the “Premises”).</p>
           </section>
@@ -348,18 +485,24 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
             <h2 className="text-lg font-bold flex items-center gap-2 mb-4 uppercase">
               <Calendar className="w-5 h-5 text-blue-600" /> 3. TERM OF LEASE
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-              <div>
-                <Label>Commencement Date</Label>
-                <Input type="date" name="commencementDate" value={formData.commencementDate} onChange={handleInputChange} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+              <div className="relative">
+                <Label className="text-xs uppercase text-gray-500">Commencement Date</Label>
+                <div className="relative mt-1">
+                  <Input name="commencementDate" value={formData.commencementDate} onChange={handleInputChange} className="h-10 border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 bg-transparent focus-visible:ring-0 w-full" />
+                  {!formData.commencementDate && <span className="absolute left-0 bottom-2 text-xs text-gray-400 tracking-[0.3em]">.../.../.....</span>}
+                </div>
               </div>
-              <div>
-                <Label>Duration (Months)</Label>
-                <Input type="number" name="termMonths" value={formData.termMonths} onChange={handleInputChange} />
+              <div className="relative">
+                <Label className="text-xs uppercase text-gray-500">Duration (Months)</Label>
+                <Input type="number" name="termMonths" value={formData.termMonths} onChange={handleInputChange} className="h-10 border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 bg-transparent focus-visible:ring-0 w-full" />
               </div>
-              <div>
-                <Label>End Date</Label>
-                <Input type="date" name="endDate" value={formData.endDate} onChange={handleInputChange} />
+              <div className="relative">
+                <Label className="text-xs uppercase text-gray-500">End Date</Label>
+                <div className="relative mt-1">
+                  <Input name="endDate" value={formData.endDate} onChange={handleInputChange} className="h-10 border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 bg-transparent focus-visible:ring-0 w-full" />
+                  {!formData.endDate && <span className="absolute left-0 bottom-2 text-xs text-gray-400 tracking-[0.3em]">.../.../.....</span>}
+                </div>
               </div>
             </div>
             <p className="text-sm mt-4 italic text-gray-600">unless terminated earlier in accordance with this Agreement.</p>
@@ -377,15 +520,15 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
                 <div className="space-y-1">
                   <Label>4.1 Monthly Rent</Label>
                   <div className="relative">
-                    <DollarSign className="absolute left-2 top-2.5 w-4 h-4 text-gray-500" />
-                    <Input name="monthlyRent" value={formData.monthlyRent} onChange={handleInputChange} className="pl-8" />
+                    <span className="absolute left-0 top-2.5 text-xs font-bold text-gray-500">FRW</span>
+                    <Input name="monthlyRent" value={formData.monthlyRent} onChange={handleInputChange} className="pl-10 border-t-0 border-x-0 border-b-2 border-gray-300 rounded-none focus-visible:ring-0 h-10" />
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label>4.2 Payment Due Date</Label>
+                <div className="space-y-1 relative">
+                  <Label className="text-xs text-gray-500">4.2 Payment Due Date</Label>
                   <div className="flex items-center gap-2">
                     <span>On or before the</span>
-                    <Input name="paymentDueDate" value={formData.paymentDueDate} onChange={handleInputChange} className="w-20" />
+                    <Input name="paymentDueDate" value={formData.paymentDueDate} onChange={handleInputChange} className="w-20 h-8 border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0" />
                     <span>day of each month</span>
                   </div>
                 </div>
@@ -393,15 +536,15 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
               <div className="space-y-4">
                 <div className="space-y-1">
                   <Label>4.3 Mode of Payment</Label>
-                  <Input name="paymentMode" value={formData.paymentMode} onChange={handleInputChange} />
+                  <Input name="paymentMode" value={formData.paymentMode} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-gray-300 rounded-none focus-visible:ring-0 h-10" />
                 </div>
-                <div className="space-y-1">
-                  <Label>4.4 Late Payment Penalty</Label>
+                <div className="space-y-1 relative">
+                  <Label className="text-xs text-gray-500">4.4 Late Payment Penalty</Label>
                   <div className="flex items-center gap-2">
                     <span>After</span>
-                    <Input name="lateGraceDays" value={formData.lateGraceDays} onChange={handleInputChange} className="w-16" />
+                    <Input name="lateGraceDays" value={formData.lateGraceDays} onChange={handleInputChange} className="w-16 h-8 border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0 text-center" />
                     <span>days:</span>
-                    <Input name="latePenalty" value={formData.latePenalty} onChange={handleInputChange} className="flex-1" />
+                    <Input name="latePenalty" value={formData.latePenalty} onChange={handleInputChange} className="flex-1 h-8 border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0" />
                   </div>
                 </div>
               </div>
@@ -526,9 +669,9 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
           <Separator />
 
           {/* 15. VALIDATION CLAUSE */}
-          <section className="bg-blue-50 p-6 rounded-xl border border-blue-200">
-            <h2 className="text-lg font-bold flex items-center gap-2 mb-3 uppercase text-blue-800">
-              <ShieldCheck className="w-6 h-6" /> 15. VALIDATION CLAUSE
+          <section className="contract-validation-panel-lease">
+            <h2 className="text-lg font-bold flex items-center gap-2 mb-3 uppercase text-blue-900">
+              <ShieldCheck className="w-6 h-6 shrink-0" /> 15. VALIDATION CLAUSE
             </h2>
             <div className="text-sm space-y-2 text-blue-900">
               <p>This Agreement shall become legally valid and enforceable only upon:</p>
@@ -547,39 +690,49 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
           {/* 16. SIGNATURES */}
           <section>
             <h2 className="text-lg font-bold mb-6 uppercase border-b pb-2">16. SIGNATURES</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="contract-parties-grid">
               {/* Landlord Sign */}
               <div className="space-y-6">
-                <h3 className="font-bold text-gray-600 uppercase text-sm tracking-widest">Landlord (Lessor)</h3>
+                <h3 className="font-bold text-slate-700 uppercase text-sm tracking-widest font-sans border-b border-slate-400 pb-1">
+                  Landlord (Lessor)
+                </h3>
                 <div className="space-y-4">
                   <div>
                     <Label className="text-xs uppercase text-gray-400">Name</Label>
-                    <Input value={formData.landlordName} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0 font-medium" readOnly />
+                    <Input name="landlordName" value={formData.landlordName} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 focus-visible:ring-0 font-medium h-10 bg-transparent" />
                   </div>
-                  <div className="h-20 border-b border-dashed border-gray-300 flex items-end pb-1 text-gray-400 italic text-sm">
+                  <div className="h-20 border-b-2 border-dashed border-gray-400 flex items-end pb-1 text-gray-500 italic text-sm font-medium">
                     Signature
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs uppercase text-gray-400 min-w-12">Date</Label>
-                    <Input type="date" name="signingDate" value={formData.signingDate} onChange={handleInputChange} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0 w-32" />
+                  <div className="flex items-center gap-2 relative">
+                    <Label className="text-[10px] font-bold text-gray-700 uppercase min-w-12">Date</Label>
+                    <div className="flex-1 relative">
+                      <Input name="signingDate" value={formData.signingDate} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 focus-visible:ring-0 w-full h-10 bg-transparent" />
+                      {!formData.signingDate && <span className="absolute left-0 bottom-2 text-xs text-gray-400 tracking-[0.2em]">...../...../......</span>}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Tenant Sign */}
               <div className="space-y-6">
-                <h3 className="font-bold text-gray-600 uppercase text-sm tracking-widest">Tenant (Lessee)</h3>
+                <h3 className="font-bold text-slate-700 uppercase text-sm tracking-widest font-sans border-b border-slate-400 pb-1">
+                  Tenant (Lessee)
+                </h3>
                 <div className="space-y-4">
                   <div>
                     <Label className="text-xs uppercase text-gray-400">Name</Label>
-                    <Input name="tenantName" value={formData.tenantName} onChange={handleInputChange} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0 font-medium" placeholder="Full legal name" />
+                    <Input name="tenantName" value={formData.tenantName} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-blue-400 rounded-none px-0 focus-visible:ring-0 font-medium h-10 bg-transparent" />
                   </div>
-                  <div className="h-20 border-b border-dashed border-blue-200 flex items-end pb-1 text-blue-300 italic text-sm">
-                    Signature (Sign after printing)
+                  <div className="h-20 border-b-2 border-dashed border-blue-400 flex items-end pb-1 text-blue-600 italic text-sm font-medium">
+                    Signature (Sign manually with a pen)
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs uppercase text-gray-400 min-w-12">Date</Label>
-                    <Input type="date" name="signingDate" value={formData.signingDate} onChange={handleInputChange} className="border-t-0 border-x-0 border-b rounded-none px-0 focus-visible:ring-0 w-32" />
+                  <div className="flex items-center gap-2 relative">
+                    <Label className="text-[10px] font-bold text-blue-700 uppercase min-w-12">Date</Label>
+                    <div className="flex-1 relative">
+                      <Input name="signingDate" value={formData.signingDate} onChange={handleInputChange} className="border-t-0 border-x-0 border-b-2 border-blue-400 rounded-none px-0 focus-visible:ring-0 w-full h-10 bg-transparent" />
+                      {!formData.signingDate && <span className="absolute left-0 bottom-2 text-xs text-blue-400 tracking-[0.2em]">...../...../......</span>}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -591,26 +744,54 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
           {/* 17. WITNESSES */}
           <section>
             <h2 className="text-lg font-bold mb-6 uppercase border-b pb-2">17. WITNESSES</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="contract-parties-grid">
               {/* Witness 1 */}
-              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                <h3 className="font-bold text-gray-500 uppercase text-xs">Witness 1</h3>
+              <div className="contract-witness-cell relative">
+                <h3 className="font-bold text-slate-600 uppercase text-xs font-sans border-b border-slate-400 pb-1 mb-1 inline-block">
+                  Witness 1
+                </h3>
                 <div className="space-y-3">
-                  <Input placeholder="Full Name" name="witness1Name" value={formData.witness1Name} onChange={handleInputChange} className="h-8 text-sm" />
-                  <Input placeholder="ID / Passport No" name="witness1ID" value={formData.witness1ID} onChange={handleInputChange} className="h-8 text-sm" />
-                  <div className="h-10 border-b border-dashed border-gray-300 flex items-end pb-1 text-gray-400 italic text-xs">Signature</div>
-                  <Input type="date" name="signingDate" value={formData.signingDate} onChange={handleInputChange} className="h-8 text-sm border-none bg-transparent p-0" />
+                  <div className="relative">
+                    <Label className="text-[10px] text-gray-400 uppercase">Full Name</Label>
+                    <Input name="witness1Name" value={formData.witness1Name} onChange={handleInputChange} className="h-10 text-sm border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 bg-transparent focus-visible:ring-0" />
+                  </div>
+                  <div className="relative">
+                    <Label className="text-[10px] text-gray-400 uppercase">ID / Passport No</Label>
+                    <Input name="witness1ID" value={formData.witness1ID} onChange={handleInputChange} className="h-10 text-sm border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 bg-transparent focus-visible:ring-0" />
+                  </div>
+                  <div className="h-12 border-b-2 border-dashed border-gray-400 flex items-end pb-1 text-gray-500 italic text-xs font-medium">Signature</div>
+                  <div className="flex items-center gap-2 pt-2 relative">
+                    <Label className="text-[10px] text-gray-400 uppercase min-w-10">Date</Label>
+                    <div className="flex-1 relative">
+                      <Input name="signingDate" value={formData.signingDate} onChange={handleInputChange} className="h-8 text-sm border-t-0 border-x-0 border-b-2 border-gray-300 bg-transparent px-0 focus-visible:ring-0 w-full" />
+                      {!formData.signingDate && <span className="absolute left-0 bottom-1 text-[10px] text-gray-400 tracking-[0.3em]">.../.../.....</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Witness 2 */}
-              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                <h3 className="font-bold text-gray-500 uppercase text-xs">Witness 2</h3>
+              <div className="contract-witness-cell relative">
+                <h3 className="font-bold text-slate-600 uppercase text-xs font-sans border-b border-slate-400 pb-1 mb-1 inline-block">
+                  Witness 2
+                </h3>
                 <div className="space-y-3">
-                  <Input placeholder="Full Name" name="witness2Name" value={formData.witness2Name} onChange={handleInputChange} className="h-8 text-sm" />
-                  <Input placeholder="ID / Passport No" name="witness2ID" value={formData.witness2ID} onChange={handleInputChange} className="h-8 text-sm" />
-                  <div className="h-10 border-b border-dashed border-gray-300 flex items-end pb-1 text-gray-400 italic text-xs">Signature</div>
-                  <Input type="date" name="signingDate" value={formData.signingDate} onChange={handleInputChange} className="h-8 text-sm border-none bg-transparent p-0" />
+                  <div className="relative">
+                    <Label className="text-[10px] text-gray-400 uppercase">Full Name</Label>
+                    <Input name="witness2Name" value={formData.witness2Name} onChange={handleInputChange} className="h-10 text-sm border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 bg-transparent focus-visible:ring-0" />
+                  </div>
+                  <div className="relative">
+                    <Label className="text-[10px] text-gray-400 uppercase">ID / Passport No</Label>
+                    <Input name="witness2ID" value={formData.witness2ID} onChange={handleInputChange} className="h-10 text-sm border-t-0 border-x-0 border-b-2 border-gray-400 rounded-none px-0 bg-transparent focus-visible:ring-0" />
+                  </div>
+                  <div className="h-12 border-b-2 border-dashed border-gray-400 flex items-end pb-1 text-gray-500 italic text-xs font-medium">Signature</div>
+                  <div className="flex items-center gap-2 pt-2 relative">
+                    <Label className="text-[10px] text-gray-400 uppercase min-w-10">Date</Label>
+                    <div className="flex-1 relative">
+                      <Input name="signingDate" value={formData.signingDate} onChange={handleInputChange} className="h-8 text-sm border-t-0 border-x-0 border-b-2 border-gray-300 bg-transparent px-0 focus-visible:ring-0 w-full" />
+                      {!formData.signingDate && <span className="absolute left-0 bottom-1 text-[10px] text-gray-400 tracking-[0.3em]">.../.../.....</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -650,13 +831,17 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
 
               <div className="flex items-center gap-2">
                 <Label className="text-xs uppercase text-gray-400 min-w-12">Date</Label>
-                <div className="border-b border-black pb-1 w-32 font-medium">___ / ___ / 20___</div>
+                <div className="border-b border-black pb-1 w-40 font-medium tracking-[0.2em]">...../...../......</div>
               </div>
             </div>
           </section>
-          <Separator />
 
-          {/* 19. FINAL STEPS & SUBMISSION */}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* 19. FINAL STEPS & SUBMISSION */}
           <section className="bg-gray-50 p-6 rounded-xl border border-gray-200 print:hidden">
             <h2 className="text-lg font-bold flex items-center gap-2 mb-4 uppercase text-gray-800">
               <ShieldCheck className="w-6 h-6 text-green-600" /> 19. FINAL STEPS & SUBMISSION
@@ -685,10 +870,10 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
               <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
                 <div className="space-y-1">
                   <p className="text-sm font-bold">Step 1: Download & Sign</p>
-                  <p className="text-xs text-gray-500">Download the agreement, sign it physically, and prepare it for upload below.</p>
+                  <p className="text-xs text-gray-500">Download the agreement, print it, and fill/sign it **manually with a pen**.</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={handlePrintAction} className="border-blue-600 text-blue-600 hover:bg-blue-50">
-                  <Download className="w-4 h-4 mr-2" /> Download/Print
+                <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={isSubmitting} className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                  <Download className="w-4 h-4 mr-2" /> {isSubmitting ? "Generating..." : "Download PDF"}
                 </Button>
               </div>
 
@@ -718,7 +903,6 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
             </div>
           </section>
         </div>
-      </div>
 
       {/* Footer / Action */}
       <div className="bg-gray-50 border-t p-6 flex justify-between items-center print:hidden sticky bottom-0">
@@ -726,15 +910,13 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
         <div className="flex gap-3">
           <div className="flex flex-col items-end gap-1">
             <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg px-8"
+              className={`bg-blue-600 hover:bg-blue-700 text-white shadow-lg px-8 transition-all duration-300 ${formData.signedContractFile ? 'scale-105 shadow-blue-200' : ''}`}
               onClick={handleSubmit}
-              disabled={!formData.tenantName || !formData.tenantContact || !formData.acceptedTerms || isSubmitting}
+              disabled={!formData.signedContractFile || isSubmitting}
             >
-              {isSubmitting ? "Uploading..." : "Submit Contract Request"}
+              {isSubmitting ? "Processing..." : "Submit Contract Now"}
             </Button>
-            {!formData.tenantName && <p className="text-[10px] text-red-500">Tenant Name is required</p>}
-            {!formData.tenantContact && <p className="text-[10px] text-red-500">Tenant Contact (Email/Phone) is required</p>}
-            {!formData.acceptedTerms && <p className="text-[10px] text-red-500">Must accept Terms & Conditions</p>}
+            {!formData.signedContractFile && <p className="text-[10px] text-red-500">Signed contract upload is required</p>}
           </div>
         </div>
       </div>

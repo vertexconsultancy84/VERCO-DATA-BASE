@@ -93,26 +93,21 @@ export default function RecordsTable() {
   const fetchRecords = async () => {
     try {
       setLoading(true);
-      
-      // Fetch registrations
-      console.log('Fetching registrations...');
-      const regResponse = await fetch('/api/registrations');
-      const regData = await regResponse.json();
-      console.log('Registrations response:', regData);
+
+      const [regResponse, prodResponse, ordersResponse] = await Promise.all([
+        fetch('/api/registrations'),
+        fetch('/api/products'),
+        fetch('/api/orders'),
+      ]);
+
+      const [regData, prodData, ordersData] = await Promise.all([
+        regResponse.json(),
+        prodResponse.json(),
+        ordersResponse.json(),
+      ]);
+
       setRegistrations(regData.data || []);
-      
-      // Fetch products
-      console.log('Fetching products...');
-      const prodResponse = await fetch('/api/products');
-      const prodData = await prodResponse.json();
-      console.log('Products response:', prodData);
       setProducts(prodData.data || []);
-      
-      // Fetch orders
-      console.log('Fetching orders...');
-      const ordersResponse = await fetch('/api/orders');
-      const ordersData = await ordersResponse.json();
-      console.log('Orders response:', ordersData);
       setOrders(ordersData.orders || []);
       
     } catch (error: any) {

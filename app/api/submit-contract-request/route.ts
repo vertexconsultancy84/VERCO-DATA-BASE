@@ -24,43 +24,42 @@ export async function POST(request: NextRequest) {
 
     if (!productId || !tenantName || !userName || !userEmail) {
       return NextResponse.json(
-        { error: 'Product ID, tenant name, user name, and user email are required' },
+        { success: false, error: 'Product ID, tenant name, user name, and user email are required' },
         { status: 400 }
       );
     }
 
-    // Create a new order with pending payment status
-    const newOrder = await prisma.order.create({
+    // Create a new order record acting as a contract request
+    const newContract = await prisma.order.create({
       data: {
         productId,
-        productTitle,
-        productPrice,
-        quantity: 1,
-        userName,
-        userEmail,
-        customerPhone,
-        deliveryAddress,
-        village,
+        productTitle: productTitle || "Product",
+        productPrice: productPrice || 0,
+        userName: tenantName || userName || "Client",
+        userEmail: userEmail || "N/A",
+        customerPhone: customerPhone || tenantContact || "N/A",
+        deliveryAddress: tenantAddress || deliveryAddress || "N/A",
+        village: village || "N/A",
         category: category || 'OtherProducts',
-        subcategory,
-        status: 'pending',
-        paymentStatus: 'pending',
-        contractUploaded: !!contractFileUrl,
+        subcategory: subcategory,
         contractFileUrl: contractFileUrl,
-        contractSubmittedAt: contractFileUrl ? new Date() : null,
+        contractUploaded: !!contractFileUrl,
+        contractSubmittedAt: new Date(),
+        status: 'pending',
+        deliveryInstructions: `CONTRACT INFO: Nationality: ${tenantNationality || 'N/A'}, ID: ${tenantID || 'N/A'}, Address: ${tenantAddress || 'N/A'}`,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Contract request submitted successfully! Please contact admin to arrange payment.',
-      orderId: newOrder.id,
-      order: newOrder,
+      message: 'contract succesful submited and you will get full asigned contract after payment.',
+      contractId: newContract.id,
+      contract: newContract,
     });
   } catch (error) {
     console.error('Error submitting contract request:', error);
     return NextResponse.json(
-      { error: 'Failed to submit contract request' },
+      { success: false, error: error instanceof Error ? error.message : 'Failed to submit contract request' },
       { status: 500 }
     );
   }

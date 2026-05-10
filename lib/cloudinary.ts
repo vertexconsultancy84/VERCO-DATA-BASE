@@ -8,19 +8,74 @@ cloudinary.v2.config({
   secure: true,
 });
 
+/**
+ * Build a time-limited signed delivery URL for assets stored on Cloudinary.
+ * Fixes 401s when the account restricts unsigned PDF/image delivery or legacy `/image/upload/*.pdf` URLs.
+ */
+export function signStoredCloudinaryUrl(
+  storedUrl: string,
+  options?: { attachment?: boolean }
+): string | null {
+  if (!storedUrl?.includes('res.cloudinary.com')) {
+    return null;
+  }
+
+  try {
+    const u = new URL(storedUrl);
+    const m = u.pathname.match(/^\/[^/]+\/(image|video|raw)\/upload\/(?:v\d+\/)?(.+)$/);
+    if (!m) {
+      return null;
+    }
+
+    const resourceType = m[1] as 'image' | 'video' | 'raw';
+    let publicId = decodeURIComponent(m[2].replace(/\+/g, ' '));
+
+    if (resourceType === 'image' || resourceType === 'video') {
+      const lastDot = publicId.lastIndexOf('.');
+      const lastSlash = publicId.lastIndexOf('/');
+      if (lastDot > lastSlash) {
+        publicId = publicId.slice(0, lastDot);
+      }
+    }
+
+    const urlOpts: Parameters<typeof cloudinary.v2.url>[1] = {
+      resource_type: resourceType,
+      secure: true,
+      sign_url: true,
+      ...(options?.attachment ? { flags: 'attachment' } : {}),
+    };
+
+    return cloudinary.v2.url(publicId, urlOpts);
+  } catch {
+    return null;
+  }
+}
+
 // Function to upload file to Cloudinary
 export async function uploadToCloudinary(file: File | Buffer, folder: string = 'products') {
   try {
     console.log(`Starting Cloudinary upload for ${file instanceof File ? file.name : 'buffer'} to folder: ${folder}`);
     
     return new Promise((resolve, reject) => {
-      const resourceType = file instanceof File 
-        ? (file.type.startsWith('video/') ? 'video' : 'image')
-        : 'auto';
+      const isPdf =
+        file instanceof File &&
+        (file.type === 'application/pdf' ||
+          file.name?.toLowerCase().endsWith('.pdf'));
+
+      const resourceType: 'video' | 'raw' | 'auto' =
+        file instanceof File
+          ? file.type.startsWith('video/')
+            ? 'video'
+            : isPdf
+              ? 'raw'
+              : 'auto'
+          : 'auto';
 
       const uploadOptions: any = {
         folder,
+        // PDFs must use `raw` — `/image/upload/...pdf` often returns 401 (restricted PDF delivery).
         resource_type: resourceType,
+        type: 'upload', // Ensure the file is public
         public_id: `${Date.now()}-${file instanceof File ? file.name.split('.')[0] : 'upload'}`,
         overwrite: true,
         eager_async: false, // Make eager transformations synchronous

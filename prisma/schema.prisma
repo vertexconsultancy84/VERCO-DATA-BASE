@@ -159,3 +159,26 @@ model Order {
   updatedAt     DateTime @updatedAt
 }
 
+model Contract {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId         String   @db.ObjectId
+  productTitle      String
+  productPrice      Float
+  tenantName        String
+  tenantNationality String?
+  tenantID          String?
+  tenantAddress     String?
+  tenantContact     String?
+  userName          String
+  userEmail         String
+  customerPhone     String?
+  deliveryAddress   String?
+  village           String?
+  category          String
+  subcategory       String?
+  contractFileUrl   String?
+  status            String   @default("pending")
+  submittedAt       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

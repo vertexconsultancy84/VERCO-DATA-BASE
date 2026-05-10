@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
-import AboutSection from "@/components/aboutUsSection";
+import AboutSection, {
+  TEAM_FALLBACK_MEMBERS,
+  type AboutTeamMember,
+} from "@/components/aboutUsSection";
 import ContactSection from "@/components/ContactSection";
 import ServicesSection from "@/components/ServicesSection";
 import HomeServices from "@/components/HomeServices";
@@ -25,23 +28,40 @@ import Link from "next/link";
 
 export default function HomePage() {
   const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [teamMembers, setTeamMembers] = useState<AboutTeamMember[]>([]);
+  const [teamLoading, setTeamLoading] = useState(true);
 
   useEffect(() => {
-    fetchProducts();
+    let cancelled = false;
+    (async () => {
+      setTeamLoading(true);
+      try {
+        const [prodList, teamRes] = await Promise.all([
+          getAllPublishedProducts(),
+          fetch("/api/team").then((r) => r.json()),
+        ]);
+        if (cancelled) return;
+        setProducts(prodList || []);
+        if (teamRes.success) {
+          setTeamMembers(teamRes.data || []);
+        } else {
+          console.error("Failed to fetch team members:", teamRes.message);
+          setTeamMembers(TEAM_FALLBACK_MEMBERS);
+        }
+      } catch (error) {
+        console.error("Error loading home data:", error);
+        if (!cancelled) {
+          setProducts([]);
+          setTeamMembers(TEAM_FALLBACK_MEMBERS);
+        }
+      } finally {
+        if (!cancelled) setTeamLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  const fetchProducts = async () => {
-    try {
-      const products = await getAllPublishedProducts();
-      setProducts(products);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-      setProducts([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Group products by category and subcategory
   const getProductsByCategory = () => {
@@ -70,7 +90,7 @@ export default function HomePage() {
     <main className="min-h-screen">
       <Header />
       <Hero />
-      <AboutSection />
+      <AboutSection teamMembers={teamMembers} teamLoading={teamLoading} />
       <HomeServices />
       
       {/* Categories Section */}

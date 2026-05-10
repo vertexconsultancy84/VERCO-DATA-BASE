@@ -10,98 +10,82 @@ import {
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 
-interface TeamMember {
+export interface AboutTeamMember {
   id: string;
   name: string;
   position: string;
   image: string;
   order: number;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export default function AboutUsSection() {
-  const [teamworkers, setTeamworkers] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
+export const TEAM_FALLBACK_MEMBERS: AboutTeamMember[] = [
+  {
+    id: "1",
+    name: "IRADUKUNDA Stiven",
+    position: "Chief Executive Officer",
+    image: "/images/worker1.jpg?height=400&width=300",
+    order: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "2",
+    name: "GUSENGA Benjamin",
+    position: "Project Manager",
+    image: "/images/worker2.jpg?height=400&width=300",
+    order: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "3",
+    name: "AKIMANIMPAYE Rachel",
+    position: "Secretary",
+    image: "/images/worker3.jpg?height=400&width=300",
+    order: 2,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "4",
+    name: "MASENGESHO Bertin",
+    position: "Accountant",
+    image: "/images/worker4.jpg?height=400&width=300",
+    order: 3,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "5",
+    name: "NIRAGIRE Magnifique",
+    position: "IT Specialist",
+    image: "/images/worker5.jpg?height=400&width=300",
+    order: 4,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "6",
+    name: "Sostene BANANAYO",
+    position: "Developer",
+    image: "/images/profile.jpg?height=400&width=300",
+    order: 5,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
 
-  useEffect(() => {
-    fetchTeamMembers();
-  }, []);
+interface AboutUsSectionProps {
+  teamMembers: AboutTeamMember[];
+  teamLoading: boolean;
+}
 
-  const fetchTeamMembers = async () => {
-    try {
-      const response = await fetch('/api/team');
-      const data = await response.json();
-      
-      if (data.success) {
-        setTeamworkers(data.data || []);
-      } else {
-        console.error('Failed to fetch team members:', data.message);
-        // Fallback to hardcoded data if API fails
-        setTeamworkers([
-          {
-            id: "1",
-            name: "IRADUKUNDA Stiven",
-            position: "Chief Executive Officer",
-            image: "/images/worker1.jpg?height=400&width=300",
-            order: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: "2",
-            name: "GUSENGA Benjamin",
-            position: "Project Manager",
-            image: "/images/worker2.jpg?height=400&width=300",
-            order: 1,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: "3",
-            name: "AKIMANIMPAYE Rachel",
-            position: "Secretary",
-            image: "/images/worker3.jpg?height=400&width=300",
-            order: 2,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: "4",
-            name: "MASENGESHO Bertin",
-            position: "Accountant",
-            image: "/images/worker4.jpg?height=400&width=300",
-            order: 3,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: "5",
-            name: "NIRAGIRE Magnifique",
-            position: "IT Specialist",
-            image: "/images/worker5.jpg?height=400&width=300",
-            order: 4,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: "6",
-            name: "Sostene BANANAYO",
-            position: "Developer",
-            image: "/images/profile.jpg?height=400&width=300",
-            order: 5,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ]);
-      }
-    } catch (error) {
-      console.error('Error fetching team members:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+export default function AboutUsSection({
+  teamMembers,
+  teamLoading,
+}: AboutUsSectionProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [animationKey, setAnimationKey] = useState(0);
   const sectionRef = useRef(null);
@@ -129,34 +113,19 @@ export default function AboutUsSection() {
       }
     );
 
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
+    const el = sectionRef.current;
+    if (el) {
+      observer.observe(el);
     }
 
     return () => {
-      if (sectionRef.current) {
-        observer.unobserve(sectionRef.current);
+      if (el) {
+        observer.unobserve(el);
       }
     };
   }, []);
 
-  if (loading) {
-    return (
-      <section
-        ref={sectionRef}
-        id="about"
-        className="py-16 md:py-24 bg-gradient-to-b from-gray-50 to-white"
-      >
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Loading Team...
-            </h2>
-          </div>
-        </div>
-      </section>
-    );
-  }
+  const showAutoplay = !teamLoading && teamMembers.length > 0;
 
   return (
     <section
@@ -275,6 +244,11 @@ export default function AboutUsSection() {
             >
               OUR <span className="text-[#F17105]/50">TEAM</span>
             </h2>
+            {teamLoading && (
+              <p className="mt-2 text-xs text-gray-700 font-medium">
+                Loading team…
+              </p>
+            )}
           </div>
           <div className="px-8 pb-8">
             <Carousel
@@ -282,56 +256,78 @@ export default function AboutUsSection() {
                 align: "start",
                 loop: true,
               }}
-              plugins={[autoplayRef.current]}
+              plugins={showAutoplay ? [autoplayRef.current] : []}
               className="w-full"
-              onMouseEnter={() => autoplayRef.current.stop()}
-              onMouseLeave={() => autoplayRef.current.play()}
+              onMouseEnter={() => showAutoplay && autoplayRef.current.stop()}
+              onMouseLeave={() => showAutoplay && autoplayRef.current.play()}
             >
               <CarouselContent className="-ml-2 md:-ml-4">
-                {teamworkers.map((worker, index) => (
-                  <CarouselItem
-                    key={worker.id}
-                    className="pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3"
-                  >
-                    <Card
-                      key={`card-${worker.id}-${animationKey}`}
-                      className={`bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl hover:scale-105 transition-all duration-800 ${
-                        isVisible
-                          ? "animate-fadeInUp"
-                          : "opacity-0 translate-y-[50px]"
-                      }`}
-                      style={{
-                        animationDelay: `${1400 + index * 100}ms`,
-                        transitionDelay: isVisible
-                          ? `${1400 + index * 100}ms`
-                          : "0ms",
-                      }}
-                    >
-                      <div className="w-full h-48 overflow-hidden relative group">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
-                        <div className="absolute inset-0 bg-[#F17105]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
-                        <img
-                          src={worker.image || "/placeholder.svg"}
-                          alt={worker.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-                      </div>
-                      <CardContent className="p-3">
-                        <h3 className="text-[12px] font-semibold text-gray-800 group-hover:text-[#F17105] transition-colors">
-                          {worker.name}
-                        </h3>
-                        <p className="text-[10px] text-gray-600 mb-3">
-                          {worker.position}
+                {teamLoading
+                  ? [0, 1, 2].map((i) => (
+                      <CarouselItem
+                        key={`skeleton-${i}`}
+                        className="pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3"
+                      >
+                        <Card className="bg-white rounded-xl shadow-md overflow-hidden border border-white/60">
+                          <div className="w-full h-48 bg-gray-200/90 animate-pulse" />
+                          <CardContent className="p-3 space-y-2">
+                            <div className="h-3.5 bg-gray-200 rounded animate-pulse w-4/5" />
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-3/5" />
+                          </CardContent>
+                        </Card>
+                      </CarouselItem>
+                    ))
+                  : teamMembers.length === 0 ? (
+                      <CarouselItem className="pl-2 md:pl-4 basis-full">
+                        <p className="text-center text-sm text-gray-700 py-8 bg-white/80 rounded-lg">
+                          No team members to display.
                         </p>
-                        <div className="flex justify-end">
-                          <div className="bg-[#F17105] text-white w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#F17105]/80 hover:scale-110 transition-all duration-300 cursor-pointer text-xs shadow-lg">
-                            f
+                      </CarouselItem>
+                    )
+                  : teamMembers.map((worker, index) => (
+                      <CarouselItem
+                        key={worker.id}
+                        className="pl-2 md:pl-4 basis-full md:basis-1/2 lg:basis-1/3"
+                      >
+                        <Card
+                          key={`card-${worker.id}-${animationKey}`}
+                          className={`bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl hover:scale-105 transition-all duration-800 ${
+                            isVisible
+                              ? "animate-fadeInUp"
+                              : "opacity-0 translate-y-[50px]"
+                          }`}
+                          style={{
+                            animationDelay: `${1400 + index * 100}ms`,
+                            transitionDelay: isVisible
+                              ? `${1400 + index * 100}ms`
+                              : "0ms",
+                          }}
+                        >
+                          <div className="w-full h-48 overflow-hidden relative group">
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
+                            <div className="absolute inset-0 bg-[#F17105]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
+                            <img
+                              src={worker.image || "/placeholder.svg"}
+                              alt={worker.name}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </CarouselItem>
-                ))}
+                          <CardContent className="p-3">
+                            <h3 className="text-[12px] font-semibold text-gray-800 group-hover:text-[#F17105] transition-colors">
+                              {worker.name}
+                            </h3>
+                            <p className="text-[10px] text-gray-600 mb-3">
+                              {worker.position}
+                            </p>
+                            <div className="flex justify-end">
+                              <div className="bg-[#F17105] text-white w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#F17105]/80 hover:scale-110 transition-all duration-300 cursor-pointer text-xs shadow-lg">
+                                f
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </CarouselItem>
+                    ))}
               </CarouselContent>
               <CarouselPrevious className="left-2 hover:scale-110 transition-transform" />
               <CarouselNext className="right-2 hover:scale-110 transition-transform" />

@@ -1,158 +1,124 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { requireAdminAuth } from "@/app/actions/auth";
+import { useState, useEffect, useCallback, useRef } from "react";
 import LogoutButton from "./_components/logout-button";
 import AdminStats from "./_components/admin-stats";
 import TeamManagement from "./_components/team-management";
 import RecordsTable from "./_components/records-table";
 import OrderComponent from "./_components/order";
-import { getRegistrations } from "../actions/register";
-import { getAllProductsForAdmin, getAdminStats, deleteProductByAdmin } from "../actions/admin";
+import ContractsTable from "./_components/contracts-table";
+import { getAdminStats } from "../actions/admin";
 import { getAllTeamMembers } from "../actions/team";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
 import { BarChart3, Users2, FileText, ShoppingCart } from "lucide-react";
 
-const allServices = [
-  "Management Consultancy",
-  "Business Strategy Development",
-  "Chemical Manufacturing",
-  "Fertilizers & Nitrogen Compounds",
-  "Pesticides & Agrochemicals",
-  "Paints & Coatings",
-  "Soap & Detergents",
-  "Global Trading Services",
-  "Wholesale Trade",
-  "Airtime Service Retail",
-  "Cargo Handling",
-  "Food Delivery",
-  "House & Apartment Rentals",
-  "Real Estate Services",
-  "Property Management",
-  "Construction Services",
-  "Interior Design",
-  "Landscaping Services",
-  "Cleaning Services",
-  "Security Services",
-  "Transportation Services",
-  "Event Planning",
-  "Photography & Videography",
-  "Web Development",
-  "Digital Marketing",
-  "IT Support Services",
-  "Legal Services",
-  "Accounting Services",
-  "Consulting Services",
-  "Training & Education",
-  "Healthcare Services",
-  "Fitness & Wellness",
-  "Beauty & Salon Services",
-  "Automotive Services",
-  "Repair & Maintenance",
-  "Logistics & Supply Chain",
-  "Import & Export Services",
-  "Insurance Services",
-  "Banking & Financial Services",
-  "Telecommunications",
-  "Hospitality Services",
-  "Tourism Services",
-  "Entertainment Services",
-  "Other Services"
-];
-
 export default function DashboardPage() {
-  const [registrations, setRegistrations] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+
   const [activeTab, setActiveTab] = useState("overview");
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const ordersLoadRef = useRef<Promise<void> | null>(null);
+  const teamLoadRef = useRef<Promise<void> | null>(null);
 
-  const fetchOrders = async () => {
+  const fetchOrdersJson = useCallback(async (): Promise<boolean> => {
     try {
-      const response = await fetch('/api/orders');
+      const response = await fetch("/api/orders");
       const result = await response.json();
-      
       if (result.success) {
-        return { success: true, orders: result.orders };
-      } else {
-        return { success: false, orders: [] };
+        setOrders(result.orders || []);
+        return true;
       }
+      setOrders([]);
+      return false;
     } catch (error) {
       console.error("Fetch orders error:", error);
-      return { success: false, orders: [] };
-    }
-  };
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [registrationsRes, productsRes, statsRes, teamRes, ordersRes] = await Promise.all([
-        getRegistrations(),
-        getAllProductsForAdmin(),
-        getAdminStats(),
-        getAllTeamMembers(),
-        fetchOrders(),
-      ]);
-
-      if (registrationsRes.success) {
-        setRegistrations(registrationsRes.data || []);
-      }
-
-      if (productsRes.success) {
-        setProducts(productsRes.data || []);
-      }
-
-      if (statsRes.success) {
-        setStats(statsRes.data);
-      }
-
-      if (teamRes.success) {
-        setTeamMembers(teamRes.data || []);
-      }
-
-      if (ordersRes.success) {
-        setOrders(ordersRes.orders || []);
-      }
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      // Set empty arrays to prevent undefined errors
-      setRegistrations([]);
-      setProducts([]);
-      setTeamMembers([]);
       setOrders([]);
-      setStats(null);
-    } finally {
-      setLoading(false);
+      return false;
     }
-  };
+  }, []);
+
+  /** Deduped: orders fetch shared by prefetch + Orders tab */
+  const ensureOrdersLoaded = useCallback(async () => {
+    if (ordersLoadRef.current) return ordersLoadRef.current;
+    ordersLoadRef.current = (async () => {
+      setOrdersLoading(true);
+      try {
+        await fetchOrdersJson();
+      } finally {
+        setOrdersLoading(false);
+        ordersLoadRef.current = null;
+      }
+    })();
+    return ordersLoadRef.current;
+  }, [fetchOrdersJson]);
+
+  const ensureTeamLoaded = useCallback(async () => {
+    if (teamLoadRef.current) return teamLoadRef.current;
+    teamLoadRef.current = (async () => {
+      setTeamLoading(true);
+      try {
+        const teamRes = await getAllTeamMembers();
+        if (teamRes.success) {
+          setTeamMembers(teamRes.data || []);
+        }
+      } finally {
+        setTeamLoading(false);
+        teamLoadRef.current = null;
+      }
+    })();
+    return teamLoadRef.current;
+  }, []);
+
+  // Stats first (overview paints immediately); then orders + team load without delaying timers.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setStatsLoading(true);
+      try {
+        const statsRes = await getAdminStats();
+        if (!cancelled && statsRes.success) {
+          setStats(statsRes.data);
+        }
+      } catch (e) {
+        console.error("Dashboard stats error:", e);
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+      if (!cancelled) {
+        void ensureOrdersLoaded();
+        void ensureTeamLoaded();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ensureOrdersLoaded, ensureTeamLoaded]);
+
+  // Opening Orders / Team before stats finishes still kicks those loaders with dedupe.
+  useEffect(() => {
+    if (activeTab === "orders") void ensureOrdersLoaded();
+    if (activeTab === "team") void ensureTeamLoaded();
+  }, [activeTab, ensureOrdersLoaded, ensureTeamLoaded]);
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const response = await fetch('/api/orders', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch("/api/orders", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId, status: newStatus }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
-        // Refresh orders
-        const ordersRes = await fetchOrders();
-        if (ordersRes.success) {
-          setOrders(ordersRes.orders);
-        }
+        await fetchOrdersJson();
       } else {
         alert(result.message || "Failed to update order status");
       }
@@ -163,28 +129,26 @@ export default function DashboardPage() {
   };
 
   const deleteOrder = async (orderId: string) => {
-    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this order? This action cannot be undone."
+      )
+    ) {
       return;
     }
-    
+
     try {
-      const response = await fetch('/api/orders', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch("/api/orders", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
-        alert('Order deleted successfully');
-        // Refresh orders
-        const ordersRes = await fetchOrders();
-        if (ordersRes.success) {
-          setOrders(ordersRes.orders);
-        }
+        alert("Order deleted successfully");
+        await fetchOrdersJson();
       } else {
         alert(result.message || "Failed to delete order");
       }
@@ -195,111 +159,126 @@ export default function DashboardPage() {
   };
 
   const downloadOrder = (order: any) => {
-    // Import the download functions
-    import('@/utils/orderDownload').then(({ downloadOrderAsCSV, downloadOrderAsJSON, downloadOrderAsPDF }) => {
-      // Default to PDF for professional format
-      downloadOrderAsPDF(order);
-    });
-  };
-
-  const handleDeleteProduct = async (productId: string) => {
-    setIsDeleting(true);
-    try {
-      const result = await deleteProductByAdmin(productId);
-      if (result.success) {
-        // Refresh data
-        await fetchData();
-        alert(result.message);
-      } else {
-        alert(result.message || "Failed to delete product");
+    import("@/utils/orderDownload").then(
+      ({ downloadOrderAsPDF }) => {
+        downloadOrderAsPDF(order);
       }
-    } catch (error) {
-      console.error("Error deleting product:", error);
-      alert("An error occurred while deleting the product");
-    } finally {
-      setIsDeleting(false);
-    }
+    );
   };
 
-  if (loading) {
-    return (
-      <main className="min-h-screen flex flex-col">
-        <div className="flex-grow container mx-auto px-4 py-12 mt-24">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading dashboard...</p>
-          </div>
-        </div>
-      </main>
-    );
-  }
+  const handleTeamUpdated = useCallback(async () => {
+    await ensureTeamLoaded();
+  }, [ensureTeamLoaded]);
 
   return (
-    <main className="min-h-screen flex flex-col">
-      <div className="flex-grow container mx-auto px-4 py-12 mt-24">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-            Admin Dashboard
-          </h1>
-          <LogoutButton />
-        </div>
+    <>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+          Admin Dashboard
+        </h1>
+        <LogoutButton />
+      </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-          <TabsTrigger value="overview" className="flex items-center gap-2 text-xs sm:text-sm">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5">
+          <TabsTrigger
+            value="overview"
+            className="flex items-center gap-2 text-xs sm:text-sm"
+          >
             <BarChart3 className="w-4 h-4" />
             <span className="hidden sm:inline">Overview</span>
             <span className="sm:hidden">Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="records" className="flex items-center gap-2 text-xs sm:text-sm">
+          <TabsTrigger
+            value="records"
+            className="flex items-center gap-2 text-xs sm:text-sm"
+          >
             <FileText className="w-4 h-4" />
             <span className="hidden sm:inline">All Records</span>
             <span className="sm:hidden">Records</span>
           </TabsTrigger>
-          <TabsTrigger value="orders" className="flex items-center gap-2 text-xs sm:text-sm">
+          <TabsTrigger
+            value="contracts"
+            className="flex items-center gap-2 text-xs sm:text-sm"
+          >
+            <FileText className="w-4 h-4 text-blue-600" />
+            <span className="hidden sm:inline">Contracts</span>
+            <span className="sm:hidden">Contracts</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="orders"
+            className="flex items-center gap-2 text-xs sm:text-sm"
+          >
             <ShoppingCart className="w-4 h-4" />
             <span className="hidden sm:inline">Orders</span>
             <span className="sm:hidden">Orders</span>
           </TabsTrigger>
-          <TabsTrigger value="team" className="flex items-center gap-2 text-xs sm:text-sm">
+          <TabsTrigger
+            value="team"
+            className="flex items-center gap-2 text-xs sm:text-sm"
+          >
             <Users2 className="w-4 h-4" />
             <span className="hidden sm:inline">Team</span>
             <span className="sm:hidden">Team</span>
           </TabsTrigger>
         </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            {stats && (
-              <AdminStats
-                totalUsers={stats.totalUsers}
-                totalProducts={stats.totalProducts}
-                recentUsers={stats.recentUsers}
-                recentProducts={stats.recentProducts}
-              />
-            )}
-          </TabsContent>
+        <TabsContent value="overview" className="space-y-6">
+          {statsLoading ? (
+            <div className="rounded-lg border border-orange-100 bg-orange-50/40 px-6 py-12 text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+              <p className="mt-4 text-sm text-gray-600">Loading overview…</p>
+            </div>
+          ) : stats ? (
+            <AdminStats
+              totalUsers={stats.totalUsers}
+              totalProducts={stats.totalProducts}
+              recentUsers={stats.recentUsers}
+              recentProducts={stats.recentProducts}
+            />
+          ) : (
+            <p className="text-sm text-red-600">Could not load statistics.</p>
+          )}
+        </TabsContent>
 
-          <TabsContent value="records" className="space-y-6">
-            <RecordsTable />
-          </TabsContent>
+        <TabsContent value="records" className="space-y-6">
+          <RecordsTable />
+        </TabsContent>
 
-          <TabsContent value="orders" className="space-y-6">
-            <OrderComponent 
+        <TabsContent value="contracts" className="space-y-6">
+          <ContractsTable />
+        </TabsContent>
+
+        <TabsContent value="orders" className="space-y-6">
+          {ordersLoading ? (
+            <div className="rounded-lg border px-6 py-10 text-center text-sm text-gray-600">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+              Loading orders…
+            </div>
+          ) : (
+            <OrderComponent
               orders={orders}
               onUpdateStatus={updateOrderStatus}
               onDeleteOrder={deleteOrder}
               onDownloadOrder={downloadOrder}
             />
-          </TabsContent>
+          )}
+        </TabsContent>
 
-          <TabsContent value="team" className="space-y-6">
-            <TeamManagement 
+        <TabsContent value="team" className="space-y-6">
+          {teamLoading ? (
+            <div className="rounded-lg border px-6 py-10 text-center text-sm text-gray-600">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+              Loading team…
+            </div>
+          ) : (
+            <TeamManagement
               initialTeamMembers={teamMembers}
-              onUpdate={fetchData}
+              onUpdate={handleTeamUpdated}
             />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </main>
+          )}
+        </TabsContent>
+      </Tabs>
+    </>
   );
 }

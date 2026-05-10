@@ -326,7 +326,9 @@ export default function OrderComponent({ orders, onUpdateStatus, onDeleteOrder, 
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => window.open(order.contractFileUrl, '_blank')}
+                              onClick={() =>
+                                window.open(`/api/contracts/${order.id}/view`, '_blank')
+                              }
                               className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 flex-1 sm:flex-none"
                             >
                               <FileText className="h-4 w-4 mr-1" />

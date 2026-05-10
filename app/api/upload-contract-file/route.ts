@@ -12,6 +12,13 @@ export async function POST(request: NextRequest) {
 
     // Upload file to Cloudinary in the 'contracts' folder
     console.log('Contract upload started for:', file.name);
+    
+    // Create a clean public_id from filename
+    const cleanPublicId = file.name
+      .replace(/[^a-zA-Z0-9._-]/g, '') // Remove special characters
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .toLowerCase();
+    
     const result: any = await uploadToCloudinary(file, 'contracts');
     
     if (!result || !result.url) {
