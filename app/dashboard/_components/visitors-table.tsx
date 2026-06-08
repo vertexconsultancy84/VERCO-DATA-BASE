@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Globe, Monitor, Smartphone, RefreshCw, Users, TrendingUp } from "lucide-react";
+import { Globe, Monitor, Smartphone, RefreshCw, Users, TrendingUp, Trash2, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Visitor {
@@ -36,6 +36,8 @@ function timeAgo(dateStr: string): string {
 export default function VisitorsTable() {
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [clearingAll, setClearingAll] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -49,6 +51,37 @@ export default function VisitorsTable() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const deleteOne = async (id: string) => {
+    setDeletingId(id);
+    try {
+      const res = await fetch("/api/visitors", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (data.success) setVisitors((prev) => prev.filter((v) => v.id !== id));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const clearAll = async () => {
+    if (!confirm(`Delete all ${visitors.length} visitor records? This cannot be undone.`)) return;
+    setClearingAll(true);
+    try {
+      const res = await fetch("/api/visitors", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      const data = await res.json();
+      if (data.success) setVisitors([]);
+    } finally {
+      setClearingAll(false);
+    }
+  };
 
   const uniqueIPs = new Set(visitors.map((v) => v.ip)).size;
   const todayVisits = visitors.filter(
@@ -94,15 +127,29 @@ export default function VisitorsTable() {
       {/* Table header */}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-gray-800">Recent Visitors</h3>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={load}
-          className="flex items-center gap-2 border-[#023E4A] text-[#023E4A] hover:bg-[#023E4A] hover:text-white"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {visitors.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearAll}
+              disabled={clearingAll}
+              className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-600 hover:text-white"
+            >
+              <Trash className="w-4 h-4" />
+              {clearingAll ? "Clearing…" : "Clear All"}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={load}
+            className="flex items-center gap-2 border-[#023E4A] text-[#023E4A] hover:bg-[#023E4A] hover:text-white"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {visitors.length === 0 ? (
@@ -121,6 +168,7 @@ export default function VisitorsTable() {
                 <th className="px-4 py-3 text-left font-medium">Browser</th>
                 <th className="px-4 py-3 text-left font-medium">Referrer</th>
                 <th className="px-4 py-3 text-left font-medium">Time</th>
+                <th className="px-4 py-3 text-left font-medium">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -151,6 +199,16 @@ export default function VisitorsTable() {
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
                       {timeAgo(v.createdAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => deleteOne(v.id)}
+                        disabled={deletingId === v.id}
+                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-40"
+                        title="Delete this visitor record"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 );

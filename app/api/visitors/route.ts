@@ -33,3 +33,20 @@ export async function GET() {
     return NextResponse.json({ success: false, visitors: [] }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { id, all } = await req.json().catch(() => ({}));
+    if (all) {
+      await prisma.siteVisitor.deleteMany({});
+      return NextResponse.json({ success: true, message: "All visitors cleared." });
+    }
+    if (!id) {
+      return NextResponse.json({ success: false, message: "ID required." }, { status: 400 });
+    }
+    await prisma.siteVisitor.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ success: false }, { status: 500 });
+  }
+}
