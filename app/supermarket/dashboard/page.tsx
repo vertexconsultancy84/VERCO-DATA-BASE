@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { getUserSession } from "@/app/actions/auth";
 import { getUserProducts, deleteProduct } from "@/app/actions/product";
@@ -33,7 +33,7 @@ interface User {
 
 type Tab = "tools" | "upload";
 
-export default function SupermarketDashboard() {
+function SupermarketDashboardContent() {
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -386,5 +386,17 @@ export default function SupermarketDashboard() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SupermarketDashboard() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#023E4A] border-t-transparent" />
+      </div>
+    }>
+      <SupermarketDashboardContent />
+    </Suspense>
   );
 }
