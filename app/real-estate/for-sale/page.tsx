@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Calendar, Phone, Mail, MessageSquare, Home, Building, Briefcase, Image as ImageIcon, Video, Star, Filter, CreditCard, User as UserIcon } from "lucide-react";
+import Header from "@/components/Header";
 import ShoppingCartComponent from "@/components/ShoppingCart";
 import OwnerDetailsModal from "@/components/OwnerDetailsModal";
 import SalesAgreementModal from "@/components/SalesAgreementModal";
@@ -257,7 +258,7 @@ export default function ForSalePage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F17105] mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#023E4A] mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading properties for sale...</p>
         </div>
       </div>
@@ -265,17 +266,18 @@ export default function ForSalePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-cyan-50/30">
+      <Header />
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-600 to-orange-500 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="bg-gradient-to-r from-[#023E4A] to-[#0097A7] text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12">
           <div className="text-center mb-6">
             <h1 className="text-4xl font-bold mb-4">Properties for Sale</h1>
             <p className="text-xl opacity-90">Find your perfect property - houses for sale and land for building (IBIBANZA)</p>
           </div>
           <div className="text-center">
             <Link href="/">
-              <Button className="bg-white text-orange-600 hover:bg-gray-100 transition-colors">
+              <Button className="bg-white text-[#023E4A] hover:bg-gray-100 transition-colors">
                 ← Back Home
               </Button>
             </Link>
@@ -290,7 +292,7 @@ export default function ForSalePage() {
             <div className="mb-8">
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <div className="flex items-center mb-4">
-                  <Filter className="w-5 h-5 mr-2 text-orange-600" />
+                  <Filter className="w-5 h-5 mr-2 text-[#023E4A]" />
                   <h2 className="text-lg font-semibold text-gray-900">Filter by Property Type</h2>
                 </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -300,8 +302,8 @@ export default function ForSalePage() {
                   variant={selectedFilter === type.value ? "default" : "outline"}
                   className={`flex items-center justify-center gap-2 ${
                     selectedFilter === type.value 
-                      ? "bg-orange-600 hover:bg-orange-600/90" 
-                      : "hover:border-orange-600"
+                      ? "bg-[#D4A017] text-[#023E4A] hover:bg-[#b8880f]" 
+                      : "hover:border-[#D4A017]"
                   }`}
                   onClick={() => setSelectedFilter(type.value)}
                 >
@@ -325,7 +327,7 @@ export default function ForSalePage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSelectedFilter('all')}
-                  className="text-orange-600 hover:text-orange-600/90"
+                  className="text-[#023E4A] hover:text-[#023E4A]/90"
                 >
                   Show All Properties
                 </Button>
@@ -360,7 +362,7 @@ export default function ForSalePage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
             {filteredProducts.map((product) => {
               const images = getAllImages(product);
               const videos = getAllVideos(product);

@@ -3,12 +3,12 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    const { 
-      productId, 
-      tenantName, 
-      tenantNationality, 
-      tenantID, 
-      tenantAddress, 
+    const {
+      productId,
+      tenantName,
+      tenantNationality,
+      tenantID,
+      tenantAddress,
       tenantContact,
       userName,
       userEmail,
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       productPrice,
       category,
       subcategory,
-      contractFileUrl
+      contractFileUrl,
     } = await request.json();
 
     if (!productId || !tenantName || !userName || !userEmail) {
@@ -29,37 +29,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create a new order record acting as a contract request
-    const newContract = await prisma.order.create({
+    const newContract = await prisma.contract.create({
       data: {
         productId,
         productTitle: productTitle || "Product",
         productPrice: productPrice || 0,
-        userName: tenantName || userName || "Client",
-        userEmail: userEmail || "N/A",
-        customerPhone: customerPhone || tenantContact || "N/A",
-        deliveryAddress: tenantAddress || deliveryAddress || "N/A",
-        village: village || "N/A",
+        tenantName,
+        tenantNationality: tenantNationality || null,
+        tenantID: tenantID || null,
+        tenantAddress: tenantAddress || null,
+        tenantContact: tenantContact || null,
+        userName,
+        userEmail,
+        customerPhone: customerPhone || null,
+        deliveryAddress: deliveryAddress || null,
+        village: village || null,
         category: category || 'OtherProducts',
-        subcategory: subcategory,
-        contractFileUrl: contractFileUrl,
-        contractUploaded: !!contractFileUrl,
-        contractSubmittedAt: new Date(),
+        subcategory: subcategory || null,
+        contractFileUrl: contractFileUrl || null,
         status: 'pending',
-        deliveryInstructions: `CONTRACT INFO: Nationality: ${tenantNationality || 'N/A'}, ID: ${tenantID || 'N/A'}, Address: ${tenantAddress || 'N/A'}`,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: 'contract succesful submited and you will get full asigned contract after payment.',
+      message: 'Contract submitted successfully. You will receive the signed contract after payment.',
       contractId: newContract.id,
       contract: newContract,
     });
   } catch (error) {
     console.error('Error submitting contract request:', error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to submit contract request' },
+      { success: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

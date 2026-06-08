@@ -44,7 +44,7 @@ const categoryIcons: Record<string, JSX.Element> = {
   Apartment: <Home className="w-5 h-5 text-green-600" />,
   House: <Home className="w-5 h-5 text-emerald-600" />,
   Warehouse: <Warehouse className="w-5 h-5 text-gray-600" />,
-  Shop: <Store className="w-5 h-5 text-orange-600" />,
+  Shop: <Store className="w-5 h-5 text-[#023E4A]" />,
 };
 
 // Rent / Sale icons

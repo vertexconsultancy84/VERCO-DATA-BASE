@@ -8,6 +8,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getAllPublishedProducts } from "@/app/actions/product";
 import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
+import Header from "@/components/Header";
 import ShoppingCartComponent from "@/components/ShoppingCart";
 
 interface Product {
@@ -72,7 +73,7 @@ export default function GroceryPage() {
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#023E4A] mx-auto mb-4"></div>
             <p className="text-gray-600">Loading grocery stores...</p>
           </div>
         </div>
@@ -82,10 +83,11 @@ export default function GroceryPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Header />
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-r from-green-600 to-green-500 text-white">
         <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative max-w-7xl mx-auto px-4 py-20 sm:px-6 lg:px-8">
+        <div className="relative max-w-7xl mx-auto px-4 pt-32 pb-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="flex justify-center mb-6">
               <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
@@ -115,7 +117,7 @@ export default function GroceryPage() {
 
       {/* Stats Section */}
       <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div className="bg-white p-6 rounded-lg shadow-md">
             <ShoppingBasket className="h-12 w-12 text-green-500 mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-gray-900">{products.length}</h3>
@@ -150,7 +152,7 @@ export default function GroceryPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {products.map((product) => (
               <SimpleEnhancedProductCard 
                 key={product.id} 

@@ -75,7 +75,7 @@ export default function LeaseAgreementForm({ product, onSuccess, onCancel }: Lea
     endDate: "",
 
     // Rent
-    monthlyRent: product.price.toString(),
+    monthlyRent: product.price != null ? product.price.toString() : "",
     paymentDueDate: "5",
     paymentMode: "Bank Transfer",
     latePenalty: "5% per month",

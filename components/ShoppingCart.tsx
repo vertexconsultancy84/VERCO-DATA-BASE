@@ -38,7 +38,9 @@ export default function ShoppingCartComponent() {
   useEffect(() => {
     const savedCart = localStorage.getItem("shoppingCart");
     if (savedCart) {
-      setCartItems(JSON.parse(savedCart));
+      const parsed: CartItem[] = JSON.parse(savedCart);
+      // Ensure every item has a unique id (older saved carts may lack one)
+      setCartItems(parsed.map(item => ({ ...item, id: item.id || crypto.randomUUID() })));
     }
   }, []);
 
@@ -62,8 +64,8 @@ export default function ShoppingCartComponent() {
           };
           return updated;
         } else {
-          // Add new item
-          return [...prev, { ...newItem, quantity: newItem.quantity || 1 }];
+          // Add new item — ensure it has a unique id
+          return [...prev, { ...newItem, id: newItem.id || crypto.randomUUID(), quantity: newItem.quantity || 1 }];
         }
       });
       // Open cart automatically when item is added
@@ -153,22 +155,32 @@ export default function ShoppingCartComponent() {
     try {
       // Create orders from cart items with customer details
       const orderPromises = cartItems.map(async (item) => {
+        const isDelivery = customerDetails.fulfillmentMethod === "delivery";
+        const landmarkNote = isDelivery && customerDetails.landmark
+          ? ` | Landmark: ${customerDetails.landmark}`
+          : "";
         const orderData = {
           productId: item.productId,
           productTitle: item.productTitle,
           productPrice: item.productPrice,
-          userId: currentSessionId, // Linked to authenticated user
+          userId: currentSessionId,
           userName: `${customerDetails.firstName} ${customerDetails.lastName}`,
           userEmail: customerDetails.email,
           customerPhone: customerDetails.phone,
-          deliveryAddress: `${customerDetails.address}, ${customerDetails.sector}, ${customerDetails.district}, ${customerDetails.province}`,
-          village: customerDetails.village,
-          deliveryInstructions: customerDetails.deliveryInstructions,
+          customerWhatsapp: customerDetails.whatsappNumber || null,
+          nationalId: customerDetails.nationalId || null,
+          fulfillmentMethod: customerDetails.fulfillmentMethod,
+          deliveryPersonName: isDelivery ? customerDetails.deliveryPersonName : null,
+          deliveryAddress: isDelivery
+            ? `${customerDetails.address}, ${customerDetails.sector}, ${customerDetails.district}, ${customerDetails.province}${landmarkNote}`
+            : "Pickup from shop",
+          village: isDelivery ? customerDetails.village : null,
+          deliveryInstructions: customerDetails.deliveryInstructions || null,
           paymentMethod: customerDetails.paymentMethod,
           category: item.category,
           subcategory: item.subcategory,
           status: "pending",
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
 
         const response = await fetch('/api/orders', {
@@ -204,7 +216,11 @@ export default function ShoppingCartComponent() {
       
       clearCart();
       setShowCheckout(false);
-      alert(`Order placed successfully! Your items will be delivered to ${customerDetails.address}, ${customerDetails.sector}, ${customerDetails.district}, ${customerDetails.province}. You will be contacted at ${customerDetails.phone} for confirmation.`);
+      if (customerDetails.fulfillmentMethod === "pickup") {
+        alert(`Order placed successfully! You chose to pick up from the shop. The seller will contact you at ${customerDetails.phone} with the pickup address and time.`);
+      } else {
+        alert(`Order placed successfully! Your items will be delivered to ${customerDetails.address}, ${customerDetails.sector}, ${customerDetails.district}, ${customerDetails.province}. You will be contacted at ${customerDetails.phone} for confirmation.`);
+      }
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Failed to place order. Please try again.');
@@ -351,6 +367,8 @@ export default function ShoppingCartComponent() {
               onSubmit={handleCustomerDetailsSubmit}
               onCancel={() => setShowCheckout(false)}
               loading={isProcessing}
+              cartItems={cartItems}
+              totalPrice={getTotalPrice()}
             />
           </div>
         </div>

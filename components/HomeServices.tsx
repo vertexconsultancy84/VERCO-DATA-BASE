@@ -139,7 +139,7 @@ export default function HomeServices() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="flex flex-col max-w-4xl mx-auto gap-8 lg:gap-12 mb-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-0 items-start">
           {/* Services List */}
           <div
             key={`services-${animationKey}`}

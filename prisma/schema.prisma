@@ -32,6 +32,8 @@ enum ProductCategory {
   Food
   Rent
   OtherProducts
+  Vehicles
+  Industry
 }
 
 model Registration {
@@ -60,8 +62,13 @@ model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   email     String   @unique
-  phone      String?  // Optional phone number for WhatsApp contact
+  phone     String?
   password  String
+  category  String   @default("OtherProducts")
+  province  String?
+  district  String?
+  sector    String?
+  zone      String?
   products  Product[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -152,11 +159,129 @@ model Order {
   paymentStatus String   @default("pending") // pending, paid, verified, failed
   paymentVerifiedBy String? @db.ObjectId // Admin who verified payment
   paymentVerifiedAt DateTime? // When payment was verified
+  fulfillmentMethod String? @default("delivery") // "pickup" or "delivery"
+  deliveryPersonName String? // Name of person who will deliver / receive the order
   contractUploaded Boolean @default(false) // Whether signed contract has been uploaded
   contractFileUrl String? // URL to uploaded signed contract
   contractSubmittedAt DateTime? // When contract was submitted
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model IndustryCalculation {
+  id                     String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                 String   @db.ObjectId
+  rawMaterialName        String
+  feedQuantity           Float    @default(0)
+  pricePerUnit           Float    @default(0)
+  autoFeedPrice          Float    @default(0)
+  extraFeeds             Json     @default("[]")
+  totalTaxes             Float    @default(0)
+  commission             Float    @default(0)
+  labourCost             Float    @default(0)
+  totalTransport         Float    @default(0)
+  otherExpenses          Float    @default(0)
+  totalQty               Float    @default(0)
+  qtyProducedBoxes       Float    @default(0)
+  qtyProduced            Float    @default(0)
+  possibleDiscount       Float    @default(0)
+  calculatedPricePerUnit Float    @default(0)
+  calculatedPricePerBox  Float    @default(0)
+  totalFeedsPrice        Float    @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model FinishedProductCalculation {
+  id                     String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                 String   @db.ObjectId
+  productName            String?
+  purchasePrice          Float    @default(0)
+  transport              Float    @default(0)
+  taxes                  Float    @default(0)
+  packaging              Float    @default(0)
+  labor                  Float    @default(0)
+  otherExpenses          Float    @default(0)
+  customExpenses         Json     @default("[]")
+  desiredProfitPct       Float    @default(20)
+  totalCost              Float    @default(0)
+  recommendedSellingPrice Float   @default(0)
+  actualSellingPrice     Float?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model IndustryProductAnalytics {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  month     String   // "YYYY-MM"
+  rows      Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model IndustryStock {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @unique @db.ObjectId
+  items     Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RawMaterialStock {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String   @db.ObjectId
+  materialName      String
+  quantityPurchased Float
+  unit              String
+  purchasePrice     Float    @default(0)
+  tax               Float    @default(0)
+  transportCost     Float    @default(0)
+  otherExpenses     Float    @default(0)
+  customExpenses    Json     @default("[]")
+  totalCost         Float    @default(0)
+  costPerUnit       Float    @default(0)
+  currentStock      Float    @default(0)
+  createdAt         DateTime @default(now())
+}
+
+model FinishedProductStock {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId               String   @db.ObjectId
+  productName          String
+  quantityProduced     Float
+  productionCost       Float    @default(0)
+  laborCost            Float    @default(0)
+  packagingCost        Float    @default(0)
+  transportCost        Float    @default(0)
+  otherExpenses        Float    @default(0)
+  customExpenses       Json     @default("[]")
+  totalProductionCost  Float    @default(0)
+  costPerUnit          Float    @default(0)
+  createdAt            DateTime @default(now())
+}
+
+model StockMovement {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  type        String   // "raw" | "finished"
+  recordId    String   @db.ObjectId
+  recordName  String
+  unit        String
+  movement    String   // "in" | "out"
+  quantity    Float
+  notes       String?
+  date        DateTime
+  createdAt   DateTime @default(now())
+}
+
+model SiteVisitor {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  ip        String?
+  userAgent String?
+  page      String   @default("/")
+  referrer  String?
+  createdAt DateTime @default(now())
 }
 
 model Contract {

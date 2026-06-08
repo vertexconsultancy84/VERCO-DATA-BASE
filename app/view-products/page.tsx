@@ -8,15 +8,17 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
 import ShoppingCartComponent from "@/components/ShoppingCart";
-import { Package, Star, Users, Filter, Home, Building, Utensils, ShoppingBasket, ChefHat, Truck, Croissant, Coffee } from "lucide-react";
+import { Package, Star, Users, Filter, Home, Building, Utensils, ShoppingBasket, ChefHat, Truck, Croissant, Coffee, Factory, Layers, BoxesIcon, Car, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const categoryLabels = {
   RealEstate: "Real Estate",
-  Food: "Food",
+  Food: "Food & Dining",
   Rent: "Rent",
-  OtherProducts: "Other Products"
+  OtherProducts: "Other Products",
+  Vehicles: "Vehicles",
+  Industry: "Industry"
 };
 
 const rentSubcategories = {
@@ -158,14 +160,14 @@ function ViewProductsContent() {
   return (
     <>
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-orange-600 to-orange-500 text-white">
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#023E4A] to-[#0097A7] text-white">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative max-w-7xl mx-auto px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Available Products
             </h1>
-            <p className="mt-6 text-xl text-orange-100 max-w-3xl mx-auto">
+            <p className="mt-6 text-xl text-white/80 max-w-3xl mx-auto">
               Discover amazing products and services from our community
             </p>
           </div>
@@ -174,19 +176,19 @@ function ViewProductsContent() {
 
       {/* Stats Section */}
       <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <Package className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+            <Package className="h-12 w-12 text-[#023E4A] mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-gray-900">{products.length}</h3>
             <p className="text-gray-600">Total Products</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <Star className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+            <Star className="h-12 w-12 text-[#023E4A] mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-gray-900">4.8</h3>
             <p className="text-gray-600">Average Rating</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <Users className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+            <Users className="h-12 w-12 text-[#023E4A] mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-gray-900">50+</h3>
             <p className="text-gray-600">Active Users</p>
           </div>
@@ -203,7 +205,7 @@ function ViewProductsContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Link
               href="/real-estate/for-rent"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -216,7 +218,7 @@ function ViewProductsContent() {
 
             <Link
               href="/real-estate/for-sale"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -229,15 +231,85 @@ function ViewProductsContent() {
           </div>
         </div>
 
-        {/* Food Categories */}
+        {/* Vehicles Categories */}
         <div className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center">
-            Food & Dining
+          <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <Car className="w-5 h-5 text-blue-600" /> Vehicles
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Link
+              href="/vehicles/for-rent"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-blue-300"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Car className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">For Rent</h4>
+                <p className="text-sm text-gray-600">Cars, Bikes & Other Vehicles</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/vehicles/for-sale"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-blue-300"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Car className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">For Sale</h4>
+                <p className="text-sm text-gray-600">Buy Cars & Vehicles</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        {/* Industry Categories */}
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <Factory className="w-5 h-5 text-[#023E4A]" /> Industry
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Link
+              href="/industry/raw-materials"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-slate-600 to-slate-700 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Layers className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">Raw Materials</h4>
+                <p className="text-sm text-gray-600">Industrial raw materials & inputs</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/industry/finished-products"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-teal-400"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-teal-600 to-teal-700 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <BoxesIcon className="w-6 h-6" />
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">Finished Products</h4>
+                <p className="text-sm text-gray-600">Manufactured & finished goods</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        {/* Other Products — includes Food & Dining */}
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <Package className="w-5 h-5 text-gray-600" /> Other Products
+          </h3>
+
+          <p className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wide">Food & Dining</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
             <Link
               href="/food/restaurant"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -249,7 +321,7 @@ function ViewProductsContent() {
 
             <Link
               href="/food/grocery"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -261,7 +333,7 @@ function ViewProductsContent() {
 
             <Link
               href="/food/catering"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -273,7 +345,7 @@ function ViewProductsContent() {
 
             <Link
               href="/food/food-delivery"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -285,7 +357,7 @@ function ViewProductsContent() {
 
             <Link
               href="/food/bakery"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -297,7 +369,7 @@ function ViewProductsContent() {
 
             <Link
               href="/food/other-food"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-orange-300"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
             >
               <div className="flex flex-col items-center text-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -307,13 +379,25 @@ function ViewProductsContent() {
               </div>
             </Link>
           </div>
-        </div>
 
-        {/* Other Products Category */}
-        <div className="text-center">
+          <p className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wide">Supermarket</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <Link
+              href="/other-products/supermarket"
+              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
+            >
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <ShoppingCart className="w-6 h-6 text-white" />
+              </div>
+              <h4 className="text-lg font-bold text-gray-900 mb-2">Supermarket</h4>
+              <p className="text-sm text-gray-600">Groceries, essentials & everyday products</p>
+            </Link>
+          </div>
+
+          <p className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wide">General</p>
           <Link
             href="/other-products"
-            className="inline-flex items-center px-8 py-4 border border-transparent text-base font-medium rounded-xl text-white bg-gray-600 hover:bg-gray-700 transition-colors"
+            className="inline-flex items-center px-8 py-4 border border-transparent text-base font-medium rounded-xl text-white bg-[#023E4A] hover:bg-[#012d36] transition-colors"
           >
             <Package className="w-5 h-5 mr-2" />
             Other Products
@@ -337,7 +421,7 @@ function ViewProductsContent() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredProducts.map((product) => (
               <SimpleEnhancedProductCard
                 key={product.id}
@@ -356,7 +440,7 @@ function ViewProductsContent() {
 
 export default function ViewProductsPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30">
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-cyan-50/30">
       <Header />
       <Suspense fallback={
         <div className="max-w-7xl mx-auto px-4 py-8 text-center">

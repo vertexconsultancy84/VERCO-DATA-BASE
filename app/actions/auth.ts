@@ -120,6 +120,11 @@ export async function signup(prevState: any, formData: FormData) {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const category = (formData.get("category") as string) || "OtherProducts";
+  const province = (formData.get("province") as string) || null;
+  const district = (formData.get("district") as string) || null;
+  const sector = (formData.get("sector") as string) || null;
+  const zone = (formData.get("zone") as string) || null;
 
   if (!name || !email || !password) return { success: false, message: "All fields are required." };
 
@@ -128,7 +133,9 @@ export async function signup(prevState: any, formData: FormData) {
     if (existingUser) return { success: false, message: "Email already exists." };
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({ data: { name, email, password: hashedPassword } });
+    const user = await prisma.user.create({
+      data: { name, email, password: hashedPassword, category, province, district, sector, zone },
+    });
 
     // Set session cookie for user
     const cookieStore = await cookies();
@@ -193,7 +200,7 @@ export async function getUserSession() {
   try {
     const user = await prisma.user.findUnique({
       where: { id: sessionToken },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, category: true },
     });
     return user;
   } catch {

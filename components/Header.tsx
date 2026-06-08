@@ -14,8 +14,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SideDrawer from "./SideDrawer";
-import { getAdminSession, logout } from "@/app/actions/auth"; // Import auth actions
-import { usePathname } from "next/navigation"; // To get current path
+import { getAdminSession, logout } from "@/app/actions/auth";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -33,11 +33,7 @@ export default function Header() {
   ];
 
   useEffect(() => {
-    const handleScroll = () => {
-      const offset = window.scrollY;
-      setScrolled(offset > 40);
-    };
-
+    const handleScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -48,20 +44,20 @@ export default function Header() {
       setIsAdminLoggedIn(!!admin && admin.role === "admin");
     };
     checkLoginStatus();
-  }, [pathname]); // Re-check on path change
+  }, [pathname]);
 
-  const handleLogout = async () => {
-    await logout();
-  };
+  const handleLogout = async () => { await logout(); };
 
   return (
     <>
       <header className="absolute top-0 left-0 right-0 z-50 w-full">
-        <div className="bg-[#000000] text-white py-2 px-[2rem] animate-slideDown">
+
+        {/* Top bar — dark teal from logo ribbon */}
+        <div className="bg-[#023E4A] text-white py-2 px-[2rem] border-b border-[#D4A017]/30 animate-slideDown">
           <div className="container mx-auto flex flex-wrap items-center justify-center md:justify-between">
-            <div className="hidden md:flex items-center text-[12px] space-x-6 animate-fadeInLeft">
+            <div className="hidden md:flex items-center text-[12px] space-x-6 animate-fadeInLeft text-cyan-100">
               <span>24/7 Professional Consulting Services</span>
-              <span>vertexconsultancy84@gmail.com</span>
+              <span className="text-[#D4A017]">vertexconsultancy84@gmail.com</span>
             </div>
             <div className="flex items-center space-x-4 animate-fadeInRight">
               <div className="flex space-x-4">
@@ -69,98 +65,98 @@ export default function Header() {
                 <Twitter className="w-4 h-4 text-[#1da1f2] cursor-pointer hover:scale-110 transition-transform" />
                 <Instagram className="w-4 h-4 text-[#e1306c] cursor-pointer hover:scale-110 transition-transform" />
                 <Youtube className="w-4 h-4 text-[#ff0000] cursor-pointer hover:scale-110 transition-transform" />
-                <a
-                  href="https://wa.me/250784761274"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <MessageCircle className="w-4 h-4 text-[#0088cc] cursor-pointer hover:scale-110 transition-transform" />
+                <a href="https://wa.me/250784761274" target="_blank" rel="noopener noreferrer">
+                  <MessageCircle className="w-4 h-4 text-[#25D366] cursor-pointer hover:scale-110 transition-transform" />
                 </a>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Main nav */}
         <nav
-          className={`top-0 left-0 right-0 z-40 transition-all duration-100 animate-slideDown px-[2rem] ${
-            scrolled ? "bg-[#000000] fixed" : "bg-transparent"
+          className={`top-0 left-0 right-0 z-40 transition-all duration-200 animate-slideDown px-[2rem] ${
+            scrolled
+              ? "bg-[#023E4A] fixed shadow-lg shadow-cyan-900/40 border-b border-[#D4A017]/20"
+              : "bg-transparent"
           }`}
         >
           <div className="container mx-auto">
             <div className="flex justify-between items-center py-4">
-              <Link
-                href="/"
-                className="flex items-center space-x-2 text-white animate-fadeInLeft animation-delay-300"
-              >
-                <span className="text-[16px] hover:text-[#F17105] transition-colors">
+
+              {/* Logo */}
+              <Link href="/" className="flex items-center gap-2 animate-fadeInLeft animation-delay-300">
+                <span className="text-[16px] font-bold tracking-widest text-white hover:text-[#D4A017] transition-colors uppercase">
                   VERTEX CONSULTING
                 </span>
+                <span className="hidden sm:block text-[10px] font-semibold text-[#D4A017] tracking-widest uppercase border-l border-[#D4A017]/40 pl-2">
+                  LTD
+                </span>
               </Link>
+
+              {/* Desktop nav links */}
               <div className="hidden lg:flex items-center space-x-8 animate-fadeInUp animation-delay-500">
                 {navigation.map((item, index) => (
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="text-white hover:text-[#F17105] text-[16px] transition-colors animate-fadeInUp"
+                    className="text-white hover:text-[#D4A017] text-[15px] font-medium transition-colors animate-fadeInUp relative group"
                     style={{ animationDelay: `${600 + index * 100}ms` }}
                   >
                     {item.name}
+                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#D4A017] group-hover:w-full transition-all duration-200" />
                   </Link>
                 ))}
                 {isAdminLoggedIn && (
                   <Link
                     href="/dashboard"
-                    className="text-white hover:text-[#F17105] text-[16px] transition-colors animate-fadeInUp"
-                    style={{ animationDelay: `200ms` }}
+                    className="text-white hover:text-[#D4A017] text-[15px] font-medium transition-colors relative group"
                   >
                     Dashboard
+                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#D4A017] group-hover:w-full transition-all duration-200" />
                   </Link>
                 )}
               </div>
-              <div className="flex items-center gap-2 animate-fadeInRight animation-delay-700">
-                <div>
-                  {isAdminLoggedIn ? (
-                    <Button
-                      onClick={handleLogout}
-                      className="hidden lg:flex bg-transparent border-gray-400 rounded-[20px] text-white text-sm py-1 px-4 bg-[#F17105] hover:bg-[#F17105]/50 hover:scale-105 transition-all duration-100 h-auto min-h-0 items-center"
-                    >
-                      <LogOut className="w-4 h-4 mr-2" /> Logout
+
+              {/* CTA + drawer */}
+              <div className="flex items-center gap-3 animate-fadeInRight animation-delay-700">
+                {isAdminLoggedIn ? (
+                  <Button
+                    onClick={handleLogout}
+                    className="hidden lg:flex items-center gap-2 rounded-full text-sm px-5 py-1.5 h-auto min-h-0 font-semibold bg-[#D4A017] hover:bg-[#b8880f] text-[#023E4A] border-0 transition-all hover:scale-105"
+                  >
+                    <LogOut className="w-4 h-4" /> Logout
+                  </Button>
+                ) : (
+                  <Link href="/login">
+                    <Button className="hidden lg:flex rounded-full text-sm px-5 py-1.5 h-auto min-h-0 font-semibold bg-[#D4A017] hover:bg-[#b8880f] text-[#023E4A] border-0 transition-all hover:scale-105">
+                      Login / Sign Up
                     </Button>
-                  ) : (
-                    <Link href={"/login"}>
-                      <Button className="hidden lg:block bg-transparent border-gray-400 rounded-[20px] text-white text-sm py-1 px-4 bg-[#F17105] hover:bg-[#F17105]/50 hover:scale-105 transition-all duration-100 h-auto min-h-0">
-                        Login/Signup
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-                <div>
-                  <button
-                    onClick={() => setIsSideDrawerOpen(true)}
-                    className="hidden lg:block"
-                  >
-                    <AlignRight className="w-10 h-5 text-white cursor-pointer hover:text-[#F17105] hover:scale-110 transition-all duration-100" />
-                  </button>
-                  <button
-                    className="lg:hidden text-white"
-                    onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  >
-                    {isMenuOpen ? (
-                      <X className="w-6 h-6 hover:scale-110 transition-transform" />
-                    ) : (
-                      <Menu className="w-6 h-6 hover:scale-110 transition-transform" />
-                    )}
-                  </button>
-                </div>
+                  </Link>
+                )}
+
+                <button onClick={() => setIsSideDrawerOpen(true)} className="hidden lg:block">
+                  <AlignRight className="w-6 h-6 text-white cursor-pointer hover:text-[#D4A017] transition-colors" />
+                </button>
+
+                <button className="lg:hidden text-white" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                  {isMenuOpen
+                    ? <X className="w-6 h-6 hover:text-[#D4A017] transition-colors" />
+                    : <Menu className="w-6 h-6 hover:text-[#D4A017] transition-colors" />
+                  }
+                </button>
               </div>
             </div>
+
+            {/* Mobile menu */}
             {isMenuOpen && (
-              <div className="lg:hidden py-4 border-t border-[#F17105]/30 bg-[#000000] animate-slideDown">
-                <div className="flex flex-col space-y-4">
+              <div className="lg:hidden py-4 border-t border-[#D4A017]/30 bg-[#023E4A] animate-slideDown rounded-b-xl">
+                <div className="flex flex-col space-y-4 px-2">
                   {navigation.map((item, index) => (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className="text-white hover:text-[#F17105] transition-colors text-[16px] font-medium animate-fadeInLeft"
+                      className="text-white hover:text-[#D4A017] transition-colors text-[16px] font-medium animate-fadeInLeft"
                       style={{ animationDelay: `${index * 100}ms` }}
                       onClick={() => setIsMenuOpen(false)}
                     >
@@ -170,24 +166,20 @@ export default function Header() {
                   {isAdminLoggedIn && (
                     <Link
                       href="/dashboard"
-                      className="text-white hover:text-[#F17105] transition-colors text-[16px] font-medium animate-fadeInLeft"
-                      style={{ animationDelay: `200ms` }}
+                      className="text-white hover:text-[#D4A017] transition-colors text-[16px] font-medium animate-fadeInLeft"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Dashboard
                     </Link>
                   )}
                   {isAdminLoggedIn ? (
-                    <Button
-                      onClick={handleLogout}
-                      className="text-white text-[16px] bg-[#F17105] hover:bg-[#F17105]/50 w-fit animate-fadeInLeft animation-delay-500"
-                    >
+                    <Button onClick={handleLogout} className="text-[#023E4A] bg-[#D4A017] hover:bg-[#b8880f] w-fit font-semibold rounded-full px-5">
                       Logout
                     </Button>
                   ) : (
-                    <Link href={"/login"}>
-                      <Button className="text-white text-[16px] bg-[#F17105] hover:bg-[#F17105]/50 w-fit animate-fadeInLeft animation-delay-500">
-                        Login
+                    <Link href="/login">
+                      <Button className="text-[#023E4A] bg-[#D4A017] hover:bg-[#b8880f] w-fit font-semibold rounded-full px-5">
+                        Login / Sign Up
                       </Button>
                     </Link>
                   )}
@@ -197,10 +189,8 @@ export default function Header() {
           </div>
         </nav>
       </header>
-      <SideDrawer
-        isOpen={isSideDrawerOpen}
-        onClose={() => setIsSideDrawerOpen(false)}
-      />
+
+      <SideDrawer isOpen={isSideDrawerOpen} onClose={() => setIsSideDrawerOpen(false)} />
     </>
   );
 }

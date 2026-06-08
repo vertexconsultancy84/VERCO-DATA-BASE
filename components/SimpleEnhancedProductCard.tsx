@@ -338,10 +338,34 @@ export default function SimpleEnhancedProductCard({ product, currentUser, isAdmi
 
                 {/* Add to Cart button for Food category */}
                 {product.category === "Food" && (
-                  <Button 
-                    variant="default" 
-                    size="sm" 
+                  <Button
+                    variant="default"
+                    size="sm"
                     className="bg-orange-600 hover:bg-orange-700"
+                    onClick={() => handleAddToCart(product)}
+                  >
+                    <ShoppingCart className="h-4 w-4 mr-2" /> Add to Cart
+                  </Button>
+                )}
+
+                {/* Add to Cart button for Industry category */}
+                {product.category === "Industry" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="bg-orange-600 hover:bg-orange-700 h-8"
+                    onClick={() => handleAddToCart(product)}
+                  >
+                    <ShoppingCart className="h-4 w-4 mr-2" /> Add to Cart
+                  </Button>
+                )}
+
+                {/* Add to Cart button for OtherProducts category */}
+                {product.category === "OtherProducts" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="bg-orange-600 hover:bg-orange-700 h-8"
                     onClick={() => handleAddToCart(product)}
                   >
                     <ShoppingCart className="h-4 w-4 mr-2" /> Add to Cart

@@ -18,6 +18,12 @@ body {
   }
 } */
 
+/* Product ticker: items enter from top and scroll toward bottom */
+@keyframes ticker-down {
+  from { transform: translateY(-50%); }
+  to   { transform: translateY(0%); }
+}
+
 @keyframes fadeInDown {
   from {
     opacity: 0;

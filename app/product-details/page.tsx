@@ -5,8 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Mail, Globe, ExternalLink, MessageCircle, Phone, CheckCircle, XCircle, AlertCircle, User as UserIcon, Building } from "lucide-react";
+import { MapPin, Mail, Globe, ExternalLink, MessageCircle, Phone, CheckCircle, XCircle, AlertCircle, User as UserIcon, ShoppingCart } from "lucide-react";
 import OwnerDetailsModal from "@/components/OwnerDetailsModal";
+import ShoppingCartComponent from "@/components/ShoppingCart";
 import Image from "next/image";
 
 interface Product {
@@ -14,12 +15,14 @@ interface Product {
   title: string;
   description: string;
   price: number;
+  category: string;
+  subcategory?: string;
   latitude: number;
   longitude: number;
   createdAt: string;
-  available?: boolean; // Add availability field
-  contactNumber?: string; // Product-specific contact number
-  whatsappNumber?: string; // Product-specific WhatsApp number
+  available?: boolean;
+  contactNumber?: string;
+  whatsappNumber?: string;
   province?: string;
   district?: string;
   sector?: string;
@@ -109,6 +112,31 @@ function ProductDetailContent() {
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
   const [isOwnerModalOpen, setIsOwnerModalOpen] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    const media = Array.isArray(product.media) && product.media.length > 0
+      ? product.media[0]
+      : product.media;
+    const image = media?.mainImage || media?.images?.[0] || undefined;
+    window.dispatchEvent(
+      new CustomEvent("addToCart", {
+        detail: {
+          id: Date.now().toString(),
+          productId: product.id,
+          productTitle: product.title,
+          productPrice: product.price ?? 0,
+          quantity: 1,
+          category: product.category,
+          subcategory: product.subcategory ?? undefined,
+          image,
+        },
+      })
+    );
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 2000);
+  };
 
   // Haversine formula to calculate distance between two points
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -261,6 +289,7 @@ function ProductDetailContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ShoppingCartComponent />
       {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6">
@@ -375,7 +404,7 @@ function ProductDetailContent() {
                             setMediaType(getMediaType(product, index));
                           }}
                           className={`relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all duration-200 ${
-                            currentMediaIndex === index ? 'border-orange-500 scale-105 shadow-md' : 'border-gray-200 opacity-70 hover:opacity-100'
+                            currentMediaIndex === index ? 'border-[#D4A017] scale-105 shadow-md' : 'border-gray-200 opacity-70 hover:opacity-100'
                           }`}
                         >
                           {getMediaType(product, index) === 'image' ? (
@@ -394,7 +423,7 @@ function ProductDetailContent() {
                           )}
                           {getMediaType(product, index) === 'video' && (
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                              <div className="text-white text-xs bg-orange-500 p-1 rounded-full">▶</div>
+                              <div className="text-white text-xs bg-[#023E4A] p-1 rounded-full">▶</div>
                             </div>
                           )}
                         </button>
@@ -407,7 +436,7 @@ function ProductDetailContent() {
                   {/* Description */}
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center">
-                      <div className="w-1 h-6 bg-orange-500 rounded-full mr-2"></div>
+                      <div className="w-1 h-6 bg-[#023E4A] rounded-full mr-2"></div>
                       Description
                     </h3>
                     <p className="text-gray-600 leading-relaxed bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
@@ -417,9 +446,9 @@ function ProductDetailContent() {
 
                   {/* Location */}
                   {(product.province || product.district || product.sector || product.village || product.zone) && (
-                    <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-5 shadow-sm">
+                    <div className="bg-cyan-50/50 border border-cyan-100 rounded-xl p-5 shadow-sm">
                       <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center">
-                        <MapPin className="w-5 h-5 mr-2 text-orange-600" />
+                        <MapPin className="w-5 h-5 mr-2 text-[#023E4A]" />
                         Detailed Location
                       </h3>
                       <p className="text-gray-700 font-medium">
@@ -434,7 +463,7 @@ function ProductDetailContent() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-white border border-gray-100 p-5 rounded-xl shadow-sm">
                       <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Price</h3>
-                      <p className="text-3xl font-black text-orange-600">
+                      <p className="text-3xl font-black text-[#023E4A]">
                         {formatPrice(product.price)}
                       </p>
                     </div>
@@ -451,6 +480,31 @@ function ProductDetailContent() {
                       </div>
                     )}
                   </div>
+
+                  {/* Add to Cart */}
+                  <button
+                    disabled={product.available === false}
+                    onClick={handleAddToCart}
+                    className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl text-base font-bold transition-all duration-200 shadow-md
+                      ${product.available === false
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        : addedToCart
+                          ? "bg-green-500 text-white scale-[0.98]"
+                          : "bg-[#D4A017] hover:bg-[#b8880f] text-[#023E4A] hover:scale-[1.01] active:scale-[0.98]"
+                      }`}
+                  >
+                    {addedToCart ? (
+                      <>
+                        <CheckCircle className="w-5 h-5" />
+                        Added to Cart!
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="w-5 h-5" />
+                        {product.available === false ? "Not Available" : "Add to Cart"}
+                      </>
+                    )}
+                  </button>
 
                   {/* Contact Section */}
                   <div className="pt-6 border-t border-gray-100">
@@ -499,11 +553,11 @@ function ProductDetailContent() {
                       {/* Email Button */}
                       <Button
                         variant="outline"
-                        className="w-full justify-start h-14 text-lg font-semibold hover:bg-orange-50 hover:border-orange-200 transition-all group"
+                        className="w-full justify-start h-14 text-lg font-semibold hover:bg-cyan-50 hover:border-[#D4A017]/30 transition-all group"
                         onClick={() => window.open(`mailto:${product.user.email}`, '_blank')}
                       >
-                        <div className="bg-gray-100 p-2 rounded-lg mr-4 group-hover:bg-orange-100 transition-colors">
-                          <Mail className="h-5 w-5 text-gray-600 group-hover:text-orange-600" />
+                        <div className="bg-gray-100 p-2 rounded-lg mr-4 group-hover:bg-cyan-100 transition-colors">
+                          <Mail className="h-5 w-5 text-gray-600 group-hover:text-[#023E4A]" />
                         </div>
                         <div className="flex flex-col items-start">
                           <span className="text-xs text-gray-500 font-normal">Email Address</span>

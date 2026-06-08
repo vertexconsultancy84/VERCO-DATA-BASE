@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Upload, X, Image as ImageIcon, Video, Building } from "lucide-react";
+import { MapPin, Upload, X, Building } from "lucide-react";
 
 // Matches view-products page categories exactly
 const realEstateSubcategories = {
@@ -37,25 +37,42 @@ const foodSubcategories = {
   "other-food": "Other Food"
 };
 
+const industrySubcategories = {
+  "raw-materials": "Raw Materials",
+  "finished-products": "Finished Products"
+};
+
+const otherProductsSubcategories = {
+  supermarket: "Supermarket",
+};
+
+const vehicleTypes = {
+  taxi: "Taxi",
+  truck: "Truck / Pickup",
+  van: "Van / Minibus",
+  bus: "Bus / Coach",
+  motorcycle: "Motorcycle"
+};
+
 interface SimpleEnhancedProductUploadFormProps {
   onSuccess?: () => void;
   initialData?: any;
   onCancel?: () => void;
+  defaultCategory?: string;
+  defaultPrice?: number;
 }
 
-export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData, onCancel }: SimpleEnhancedProductUploadFormProps) {
+export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData, onCancel, defaultCategory, defaultPrice }: SimpleEnhancedProductUploadFormProps) {
   const isEditMode = !!initialData;
   const [mainImageIndex, setMainImageIndex] = useState(0);
-  const [mainVideoIndex, setMainVideoIndex] = useState<number | null>(null);
   const [previewImages, setPreviewImages] = useState<string[]>(initialData?.media?.images || []);
-  const [previewVideos, setPreviewVideos] = useState<string[]>(initialData?.media?.videos || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [isAvailable, setIsAvailable] = useState(initialData?.available !== false); 
-  const [contactNumber, setContactNumber] = useState(initialData?.contactNumber || ""); 
-  const [whatsappNumber, setWhatsappNumber] = useState(initialData?.whatsappNumber || ""); 
-  const [category, setCategory] = useState(initialData?.category || "OtherProducts");
+  const [isAvailable, setIsAvailable] = useState(initialData?.available !== false);
+  const [contactNumber, setContactNumber] = useState(initialData?.contactNumber || "");
+  const [whatsappNumber, setWhatsappNumber] = useState(initialData?.whatsappNumber || "");
+  const [category, setCategory] = useState(initialData?.category || defaultCategory || "OtherProducts");
   const [subcategory, setSubcategory] = useState(initialData?.subcategory || "");
   const [propertyType, setPropertyType] = useState(initialData?.propertyType || "");
   const [ownerFullName, setOwnerFullName] = useState(initialData?.ownerFullName || "");
@@ -63,7 +80,6 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
   const [ownerID, setOwnerID] = useState(initialData?.ownerID || "");
   const [ownerAddress, setOwnerAddress] = useState(initialData?.ownerAddress || "");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -87,27 +103,6 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
     });
   };
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    const newVideos: string[] = [];
-    const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg'];
-    
-    Array.from(files).forEach(file => {
-      if (allowedTypes.includes(file.type) && file.size <= 10 * 1024 * 1024) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const result = event.target?.result as string;
-          newVideos.push(result);
-          setPreviewVideos(prev => [...prev, ...newVideos]);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        alert(`Invalid video file or size too large. Please use MP4, WebM, or OGG under 10MB.`);
-      }
-    });
-  };
 
   const removeImage = (index: number) => {
     setPreviewImages(prev => prev.filter((_, i) => i !== index));
@@ -116,21 +111,8 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
     }
   };
 
-  const removeVideo = (index: number) => {
-    setPreviewVideos(prev => prev.filter((_, i) => i !== index));
-    if (mainVideoIndex === index) {
-      setMainVideoIndex(null);
-    }
-  };
-
   const setAsMainImage = (index: number) => {
     setMainImageIndex(index);
-    setMainVideoIndex(null);
-  };
-
-  const setAsMainVideo = (index: number) => {
-    setMainVideoIndex(index);
-    setMainImageIndex(-1);
   };
 
   const handleLocationClick = () => {
@@ -163,42 +145,28 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
     setIsSubmitting(true);
     setError("");
 
-    const formData = new FormData(e.currentTarget);
-    
-    // Add all preview images to FormData
-    for (let i = 0; i < previewImages.length; i++) {
-      const file = await dataUrlToFile(previewImages[i], `image_${i}.jpg`, 'image/jpeg');
-      formData.append('image', file);
-    }
-    
-    // Add all preview videos to FormData
-    for (let i = 0; i < previewVideos.length; i++) {
-      const file = await dataUrlToFile(previewVideos[i], `video_${i}.mp4`, 'video/mp4');
-      formData.append('video', file);
-    }
-    
     try {
+      const formData = new FormData(e.currentTarget);
       let result;
-      
+
       if (isEditMode) {
-        // Use server action for update as we don't have an update API route yet
+        // In edit mode use the plain-object path — no file conversion needed
         const { updateProduct } = await import("@/app/actions/product");
-        
-        // Prepare the data object for update
+
         const updateData: any = {
-          title: formData.get('title') as string,
-          description: formData.get('description') as string,
-          category: category,
-          subcategory: subcategory,
-          propertyType: propertyType,
-          price: formData.get('price') ? parseFloat(formData.get('price') as string) : null,
-          latitude: formData.get('latitude') ? parseFloat(formData.get('latitude') as string) : null,
-          longitude: formData.get('longitude') ? parseFloat(formData.get('longitude') as string) : null,
-          province: formData.get('province') as string,
-          district: formData.get('district') as string,
-          sector: formData.get('sector') as string,
-          village: formData.get('village') as string,
-          zone: formData.get('zone') as string,
+          title: formData.get("title") as string,
+          description: formData.get("description") as string,
+          category,
+          subcategory,
+          propertyType,
+          price: formData.get("price") ? parseFloat(formData.get("price") as string) : null,
+          latitude: formData.get("latitude") ? parseFloat(formData.get("latitude") as string) : null,
+          longitude: formData.get("longitude") ? parseFloat(formData.get("longitude") as string) : null,
+          province: formData.get("province") as string,
+          district: formData.get("district") as string,
+          sector: formData.get("sector") as string,
+          village: formData.get("village") as string,
+          zone: formData.get("zone") as string,
           available: isAvailable,
           contactNumber,
           whatsappNumber,
@@ -206,54 +174,55 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
           ownerNationality,
           ownerID,
           ownerAddress,
-          images: previewImages, // Assuming these are URLs or base64
-          videos: previewVideos
+          images: previewImages,
+          videos: [],
         };
 
         result = await updateProduct(initialData.id, updateData);
       } else {
-        // Upload flow
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
+        // In create mode convert data-URLs to File objects and POST to the upload API
+        for (let i = 0; i < previewImages.length; i++) {
+          const file = await dataUrlToFile(previewImages[i], `image_${i}.jpg`, "image/jpeg");
+          formData.append("image", file);
+        }
+        const response = await fetch("/api/upload", { method: "POST", body: formData });
         result = await response.json();
       }
-      
+
       if (result.success) {
-        onSuccess?.();
-        if (!isEditMode) {
-          // Reset form only in create mode
-          setPreviewImages([]);
-          setPreviewVideos([]);
-          setMainImageIndex(0);
-          setMainVideoIndex(null);
-        }
-        
         setSuccess(isEditMode ? "Product updated successfully!" : "Product uploaded successfully!");
         setError("");
-        
-        window.dispatchEvent(new CustomEvent('productUpdated', { 
-          detail: { 
-            action: isEditMode ? 'updated' : 'created',
-            productId: isEditMode ? initialData.id : result.productId
-          }
-        }));
-        
+
+        if (!isEditMode) {
+          setPreviewImages([]);
+          setMainImageIndex(0);
+        }
+
+        window.dispatchEvent(
+          new CustomEvent("productUpdated", {
+            detail: {
+              action: isEditMode ? "updated" : "created",
+              productId: isEditMode ? initialData.id : result.productId,
+            },
+          })
+        );
+
         setTimeout(() => setSuccess(""), 5000);
+        onSuccess?.();
       } else {
         setError(result.message || "Something went wrong");
         setSuccess("");
       }
-    } catch (error) {
-      console.error("Operation error:", error);
-      setError(`Failed to ${isEditMode ? 'update' : 'upload'} product. Please try again.`);
+    } catch (err) {
+      console.error("Operation error:", err);
+      setError(`Failed to ${isEditMode ? "update" : "upload"} product. Please try again.`);
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    setIsSubmitting(false);
   };
 
   return (
+    <div>
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Title */}
       <div>
@@ -296,7 +265,9 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="RealEstate">🏠 Real Estate</SelectItem>
-            <SelectItem value="Food">🍽️ Food</SelectItem>
+            <SelectItem value="Vehicles">🚗 Vehicles</SelectItem>
+            <SelectItem value="Food">🍽️ Food & Dining</SelectItem>
+            <SelectItem value="Industry">🏭 Industry</SelectItem>
             <SelectItem value="OtherProducts">📦 Other Products</SelectItem>
           </SelectContent>
         </Select>
@@ -362,6 +333,43 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
         </div>
       )}
 
+      {/* Subcategory — Vehicles */}
+      {category === "Vehicles" && (
+        <div>
+          <Label htmlFor="subcategory">Vehicle Intent</Label>
+          <Select value={subcategory} onValueChange={(v) => { setSubcategory(v); setPropertyType(""); }} disabled={isSubmitting}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="For Rent or For Sale?" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="for-rent">🔑 For Rent</SelectItem>
+              <SelectItem value="for-sale">🏷️ For Sale</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-gray-500 mt-1">Is this vehicle for rent or for sale?</p>
+          <input type="hidden" name="subcategory" value={subcategory} />
+        </div>
+      )}
+
+      {/* Vehicle Type */}
+      {category === "Vehicles" && subcategory && (
+        <div>
+          <Label htmlFor="propertyType">Vehicle Type</Label>
+          <Select value={propertyType} onValueChange={setPropertyType} disabled={isSubmitting}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select vehicle type" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(vehicleTypes).map(([key, value]) => (
+                <SelectItem key={key} value={key}>{value}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-gray-500 mt-1">Select the specific vehicle type</p>
+          <input type="hidden" name="propertyType" value={propertyType} />
+        </div>
+      )}
+
       {/* Subcategory — Food */}
       {category === "Food" && (
         <div>
@@ -381,6 +389,44 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
         </div>
       )}
 
+      {/* Subcategory — Industry */}
+      {category === "Industry" && (
+        <div>
+          <Label htmlFor="subcategory">Industry Type</Label>
+          <Select value={subcategory} onValueChange={setSubcategory} disabled={isSubmitting}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select industry type" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(industrySubcategories).map(([key, value]) => (
+                <SelectItem key={key} value={key}>{value}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-gray-500 mt-1">Select whether this is a raw material or finished product</p>
+          <input type="hidden" name="subcategory" value={subcategory} />
+        </div>
+      )}
+
+      {/* Subcategory — Other Products */}
+      {category === "OtherProducts" && (
+        <div>
+          <Label htmlFor="subcategory">Product Type</Label>
+          <Select value={subcategory} onValueChange={setSubcategory} disabled={isSubmitting}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select product type (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(otherProductsSubcategories).map(([key, value]) => (
+                <SelectItem key={key} value={key}>{value}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-gray-500 mt-1">Select Supermarket if this is a supermarket product</p>
+          <input type="hidden" name="subcategory" value={subcategory} />
+        </div>
+      )}
+
       {/* Price */}
       <div>
         <Label htmlFor="price">Price (Optional)</Label>
@@ -390,7 +436,7 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
           type="number"
           step="0.01"
           min="0"
-          defaultValue={initialData?.price}
+          defaultValue={initialData?.price ?? defaultPrice}
           placeholder="Enter product price"
           className="w-full"
         />
@@ -453,76 +499,6 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
                       variant="destructive"
                       size="sm"
                       onClick={() => removeImage(index)}
-                      disabled={isSubmitting}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Videos Upload */}
-      <div>
-        <Label>Product Videos (up to 1)</Label>
-        <div className="space-y-4">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-            <input
-              ref={videoInputRef}
-              type="file"
-              accept="video/*"
-              multiple
-              onChange={handleVideoUpload}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => videoInputRef.current?.click()}
-              className="flex items-center space-x-2 text-[#F17105] hover:text-[#F17105]/90 font-semibold"
-              disabled={isSubmitting}
-            >
-              <Upload className="h-4 w-4" />
-              Click to upload video
-            </button>
-            <p className="text-sm text-gray-500 mt-2">MP4, WebM up to 10MB</p>
-          </div>
-
-          {/* Video Previews */}
-          {previewVideos.length > 0 && (
-            <div className="space-y-4">
-              {previewVideos.map((video, index) => (
-                <div key={index} className="relative group">
-                  <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200">
-                    <video
-                      src={video}
-                      className="w-full h-full object-cover"
-                      controls={false}
-                      muted
-                    />
-                    {mainVideoIndex === index && (
-                      <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-                        Main Video
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex justify-between mt-2">
-                    <Button
-                      type="button"
-                      variant={mainVideoIndex === index ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setAsMainVideo(index)}
-                      disabled={isSubmitting}
-                    >
-                      {mainVideoIndex === index ? "Main Video" : "Set as Main"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeVideo(index)}
                       disabled={isSubmitting}
                     >
                       <X className="h-4 w-4" />
@@ -735,14 +711,19 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
         </div>
       </div>
 
-      {/* Owner Information Section (For Real Estate) */}
-      {category === "RealEstate" && (
+      {/* Owner Information Section (For Real Estate & Vehicles) */}
+      {(category === "RealEstate" || category === "Vehicles") && (
         <div className="bg-blue-50/50 p-6 rounded-xl border border-blue-100 space-y-4">
           <div className="flex items-center gap-2">
             <Building className="w-5 h-5 text-blue-600" />
-            <Label className="text-lg font-bold text-blue-800">Owner Information (For Lease Agreement)</Label>
+            <Label className="text-lg font-bold text-blue-800">
+              Owner Information (For {category === "Vehicles" ? "Vehicle" : "Lease"} Agreement)
+            </Label>
           </div>
-          <p className="text-sm text-blue-600">This information will be shown to clients when they click "Contact Owner" to help them fill the lease contract.</p>
+          <p className="text-sm text-blue-600">
+            This information will be shown to clients when they click "Owner Info" to help them fill the{" "}
+            {category === "Vehicles" ? "booking/purchase" : "lease"} contract.
+          </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -832,5 +813,6 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
         </div>
       )}
     </form>
+    </div>
   );
 }

@@ -7,10 +7,12 @@ import TeamManagement from "./_components/team-management";
 import RecordsTable from "./_components/records-table";
 import OrderComponent from "./_components/order";
 import ContractsTable from "./_components/contracts-table";
+import VisitorsTable from "./_components/visitors-table";
+import UsersTable from "./_components/users-table";
 import { getAdminStats } from "../actions/admin";
 import { getAllTeamMembers } from "../actions/team";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Users2, FileText, ShoppingCart } from "lucide-react";
+import { BarChart3, Users2, FileText, ShoppingCart, Eye, UserCog } from "lucide-react";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
@@ -21,6 +23,10 @@ export default function DashboardPage() {
 
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [teamLoading, setTeamLoading] = useState(false);
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -76,6 +82,34 @@ export default function DashboardPage() {
     return teamLoadRef.current;
   }, []);
 
+  const loadUsers = useCallback(async () => {
+    setUsersLoading(true);
+    try {
+      const res = await fetch("/api/users");
+      const data = await res.json();
+      if (data.success) setUsers(data.users || []);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  const handleDeleteUser = async (userId: string) => {
+    setIsDeletingUser(true);
+    try {
+      const res = await fetch(`/api/users/${userId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setUsers((prev) => prev.filter((u) => u.id !== userId));
+      } else {
+        alert(data.message || "Failed to delete user.");
+      }
+    } catch {
+      alert("Failed to delete user.");
+    } finally {
+      setIsDeletingUser(false);
+    }
+  };
+
   // Stats first (overview paints immediately); then orders + team load without delaying timers.
   useEffect(() => {
     let cancelled = false;
@@ -101,11 +135,12 @@ export default function DashboardPage() {
     };
   }, [ensureOrdersLoaded, ensureTeamLoaded]);
 
-  // Opening Orders / Team before stats finishes still kicks those loaders with dedupe.
+  // Opening Orders / Team / Users before stats finishes still kicks those loaders.
   useEffect(() => {
     if (activeTab === "orders") void ensureOrdersLoaded();
     if (activeTab === "team") void ensureTeamLoaded();
-  }, [activeTab, ensureOrdersLoaded, ensureTeamLoaded]);
+    if (activeTab === "users") void loadUsers();
+  }, [activeTab, ensureOrdersLoaded, ensureTeamLoaded, loadUsers]);
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
@@ -180,7 +215,7 @@ export default function DashboardPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7">
           <TabsTrigger
             value="overview"
             className="flex items-center gap-2 text-xs sm:text-sm"
@@ -221,12 +256,28 @@ export default function DashboardPage() {
             <span className="hidden sm:inline">Team</span>
             <span className="sm:hidden">Team</span>
           </TabsTrigger>
+          <TabsTrigger
+            value="visitors"
+            className="flex items-center gap-2 text-xs sm:text-sm"
+          >
+            <Eye className="w-4 h-4" />
+            <span className="hidden sm:inline">Visitors</span>
+            <span className="sm:hidden">Visitors</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="users"
+            className="flex items-center gap-2 text-xs sm:text-sm"
+          >
+            <UserCog className="w-4 h-4" />
+            <span className="hidden sm:inline">Users</span>
+            <span className="sm:hidden">Users</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           {statsLoading ? (
-            <div className="rounded-lg border border-orange-100 bg-orange-50/40 px-6 py-12 text-center">
-              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+            <div className="rounded-lg border border-cyan-100 bg-cyan-50/40 px-6 py-12 text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[#023E4A] border-t-transparent" />
               <p className="mt-4 text-sm text-gray-600">Loading overview…</p>
             </div>
           ) : stats ? (
@@ -252,7 +303,7 @@ export default function DashboardPage() {
         <TabsContent value="orders" className="space-y-6">
           {ordersLoading ? (
             <div className="rounded-lg border px-6 py-10 text-center text-sm text-gray-600">
-              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-[#023E4A] border-t-transparent" />
               Loading orders…
             </div>
           ) : (
@@ -268,13 +319,32 @@ export default function DashboardPage() {
         <TabsContent value="team" className="space-y-6">
           {teamLoading ? (
             <div className="rounded-lg border px-6 py-10 text-center text-sm text-gray-600">
-              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-[#023E4A] border-t-transparent" />
               Loading team…
             </div>
           ) : (
             <TeamManagement
               initialTeamMembers={teamMembers}
               onUpdate={handleTeamUpdated}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="visitors" className="space-y-6">
+          <VisitorsTable />
+        </TabsContent>
+
+        <TabsContent value="users" className="space-y-6">
+          {usersLoading ? (
+            <div className="rounded-lg border px-6 py-10 text-center text-sm text-gray-600">
+              <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-[#023E4A] border-t-transparent" />
+              Loading users…
+            </div>
+          ) : (
+            <UsersTable
+              users={users}
+              onDeleteUser={handleDeleteUser}
+              isDeleting={isDeletingUser}
             />
           )}
         </TabsContent>

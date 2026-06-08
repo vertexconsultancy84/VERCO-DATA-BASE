@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
 import ShoppingCartComponent from "@/components/ShoppingCart";
-import { Package, Star, Users, Home, ArrowRight } from "lucide-react";
+import { Package, Star, Users, Home, ArrowRight, Utensils, ShoppingBasket, ChefHat, Truck, Croissant, Coffee, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -47,11 +47,11 @@ export default function OtherProductsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30">
+      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-cyan-50/30">
         <Header />
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#023E4A] mx-auto mb-4"></div>
             <p className="text-gray-600">Loading products...</p>
           </div>
         </div>
@@ -61,18 +61,18 @@ export default function OtherProductsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30">
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-cyan-50/30">
       <Header />
 
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-orange-600 to-orange-500 text-white">
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#023E4A] to-[#0097A7] text-white">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative max-w-7xl mx-auto px-4 py-20 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Other Products
             </h1>
-            <p className="mt-6 text-xl text-orange-100 max-w-3xl mx-auto">
+            <p className="mt-6 text-xl text-white/80 max-w-3xl mx-auto">
               Discover unique products and services from our community
             </p>
           </div>
@@ -81,22 +81,86 @@ export default function OtherProductsPage() {
 
       {/* Stats Section */}
       <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <Package className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+            <Package className="h-12 w-12 text-[#023E4A] mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-gray-900">{products.length}</h3>
             <p className="text-gray-600">Total Products</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <Star className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+            <Star className="h-12 w-12 text-[#023E4A] mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-gray-900">4.8</h3>
             <p className="text-gray-600">Average Rating</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <Users className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+            <Users className="h-12 w-12 text-[#023E4A] mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-gray-900">50+</h3>
             <p className="text-gray-600">Active Users</p>
           </div>
+        </div>
+      </div>
+
+      {/* Sub-categories */}
+      <div className="max-w-7xl mx-auto px-4 pt-12 sm:px-6 lg:px-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Browse by Sub-category</h2>
+        <p className="text-gray-600 mb-6">Select a sub-category to explore specific products</p>
+
+        {/* Food & Dining */}
+        <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <Utensils className="w-5 h-5 text-[#023E4A]" /> Food & Dining
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          <Link href="/food/restaurant" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+              <Utensils className="w-5 h-5" />
+            </div>
+            <p className="font-semibold text-gray-900 text-sm">Restaurant</p>
+          </Link>
+          <Link href="/food/grocery" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+              <ShoppingBasket className="w-5 h-5" />
+            </div>
+            <p className="font-semibold text-gray-900 text-sm">Grocery</p>
+          </Link>
+          <Link href="/food/catering" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+              <ChefHat className="w-5 h-5" />
+            </div>
+            <p className="font-semibold text-gray-900 text-sm">Catering</p>
+          </Link>
+          <Link href="/food/food-delivery" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+              <Truck className="w-5 h-5" />
+            </div>
+            <p className="font-semibold text-gray-900 text-sm">Food Delivery</p>
+          </Link>
+          <Link href="/food/bakery" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+              <Croissant className="w-5 h-5" />
+            </div>
+            <p className="font-semibold text-gray-900 text-sm">Bakery</p>
+          </Link>
+          <Link href="/food/other-food" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+              <Coffee className="w-5 h-5" />
+            </div>
+            <p className="font-semibold text-gray-900 text-sm">Other Food</p>
+          </Link>
+        </div>
+      </div>
+
+      {/* Supermarket */}
+      <div className="max-w-7xl mx-auto px-4 pt-4 pb-12 sm:px-6 lg:px-8">
+        <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <ShoppingCart className="w-5 h-5 text-emerald-600" /> Supermarket
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-2">
+          <Link href="/other-products/supermarket" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-emerald-300 transition-all duration-300">
+            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+              <ShoppingCart className="w-5 h-5" />
+            </div>
+            <p className="font-semibold text-gray-900 text-sm">Supermarket</p>
+          </Link>
         </div>
       </div>
 
@@ -104,7 +168,7 @@ export default function OtherProductsPage() {
       <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Other Products
+            General Other Products
           </h2>
           <p className="text-lg text-gray-600">
             Showing {products.length} products
@@ -121,13 +185,13 @@ export default function OtherProductsPage() {
               Be the first to add a product to this category!
             </p>
             <Link href="/signup">
-              <Button className="bg-orange-600 hover:bg-orange-700">
+              <Button className="bg-[#D4A017] hover:bg-[#b8880f] text-[#023E4A] font-semibold">
                 Get Started
               </Button>
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {products.map((product: any) => (
               <SimpleEnhancedProductCard
                 key={product.id}
@@ -147,14 +211,14 @@ export default function OtherProductsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Link 
               href="/view-products"
-              className="flex items-center justify-center px-6 py-3 border border-orange-300 text-orange-600 rounded-lg hover:bg-orange-50 transition-colors"
+              className="flex items-center justify-center px-6 py-3 border border-[#D4A017]/50 text-[#023E4A] rounded-lg hover:bg-cyan-50 transition-colors"
             >
               <Package className="h-5 w-5 mr-2" />
               Browse All Products
             </Link>
             <Link 
               href="/user/dashboard"
-              className="flex items-center justify-center px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+              className="flex items-center justify-center px-6 py-3 bg-[#D4A017] text-[#023E4A] rounded-lg hover:bg-[#b8880f] transition-colors font-semibold"
             >
               <Users className="h-5 w-5 mr-2" />
               Upload Product

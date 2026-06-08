@@ -131,7 +131,7 @@ export default function AboutUsSection({
     <section
       ref={sectionRef}
       id="about"
-      className="bg-white pt-12 pb-4 px-[3rem] sm:px-[3rem] md:px-[3rem] lg:px-[4rem]"
+      className="bg-white pt-4 pb-4 px-[3rem] sm:px-[3rem] md:px-[3rem] lg:px-[4rem]"
     >
       <div className="max-w-7xl mx-auto">
         {/* Top Section */}
@@ -319,11 +319,6 @@ export default function AboutUsSection({
                             <p className="text-[10px] text-gray-600 mb-3">
                               {worker.position}
                             </p>
-                            <div className="flex justify-end">
-                              <div className="bg-[#F17105] text-white w-6 h-6 flex items-center justify-center rounded-full hover:bg-[#F17105]/80 hover:scale-110 transition-all duration-300 cursor-pointer text-xs shadow-lg">
-                                f
-                              </div>
-                            </div>
                           </CardContent>
                         </Card>
                       </CarouselItem>
