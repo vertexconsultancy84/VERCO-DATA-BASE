@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SideDrawer from "./SideDrawer";
+import NotificationBell from "./NotificationBell";
 import { getAdminSession, logout } from "@/app/actions/auth";
 import { usePathname } from "next/navigation";
 
@@ -120,6 +121,8 @@ export default function Header() {
 
               {/* CTA + drawer */}
               <div className="flex items-center gap-3 animate-fadeInRight animation-delay-700">
+                {/* Notification bell — for logged-in users, hidden on the public home page */}
+                {pathname !== "/" && <NotificationBell />}
                 {isAdminLoggedIn ? (
                   <Button
                     onClick={handleLogout}

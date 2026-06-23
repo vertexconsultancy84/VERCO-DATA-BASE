@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       category,
       subcategory,
       status,
+      paymentStatus,
       createdAt,
     } = orderData;
 
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
         category,
         subcategory,
         status: status || "pending",
+        paymentStatus: paymentStatus || "pending",
         createdAt: createdAt || new Date().toISOString(),
       },
     });

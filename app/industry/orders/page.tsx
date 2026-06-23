@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getOrdersForMyIndustryProducts } from "@/app/actions/order";
+import { getOrdersForMyIndustryProducts, getMyProductsForSale } from "@/app/actions/order";
 import IndustryNavbar from "@/components/IndustryNavbar";
 import Header from "@/components/Header";
 import Link from "next/link";
-import { ShoppingBag, ArrowLeft, Save, Trash2, ChevronDown, Loader2, CheckCircle2, Download } from "lucide-react";
+import { ShoppingBag, ArrowLeft, Save, Trash2, ChevronDown, Loader2, CheckCircle2, Download, Plus, X, Receipt } from "lucide-react";
 
 type Order = Awaited<ReturnType<typeof getOrdersForMyIndustryProducts>>[number];
+type SaleProduct = Awaited<ReturnType<typeof getMyProductsForSale>>[number];
 
 const ORDER_STATUSES = ["pending", "confirmed", "preparing", "out_for_delivery", "delivered", "cancelled"];
 const PAYMENT_STATUSES = ["pending", "paid", "verified", "failed"];
@@ -56,6 +57,99 @@ export default function IndustryOrdersPage() {
 
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
   const [downloading, setDownloading] = useState(false);
+
+  // ── Manual sale recording ──────────────────────────────────────────
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [myProducts, setMyProducts] = useState<SaleProduct[]>([]);
+  const [savingManual, setSavingManual] = useState(false);
+  const emptyManual = {
+    productId: "",
+    unitPrice: "",
+    quantity: "1",
+    customerName: "",
+    customerPhone: "",
+    paymentMethod: "cash",
+    paymentStatus: "paid",
+    status: "delivered",
+  };
+  const [manual, setManual] = useState({ ...emptyManual });
+
+  const openManualModal = () => {
+    setManual({ ...emptyManual });
+    setShowManualModal(true);
+    if (myProducts.length === 0) {
+      getMyProductsForSale().then((data) => setMyProducts(data as SaleProduct[]));
+    }
+  };
+
+  const selectManualProduct = (productId: string) => {
+    const p = myProducts.find((mp) => mp.id === productId);
+    setManual((m) => ({
+      ...m,
+      productId,
+      unitPrice: p && p.price ? String(p.price) : m.unitPrice,
+    }));
+  };
+
+  const manualTotal =
+    (parseFloat(manual.unitPrice) || 0) * (parseInt(manual.quantity) || 0);
+
+  const handleRecordManualSale = async () => {
+    const product = myProducts.find((p) => p.id === manual.productId);
+    if (!product) {
+      alert("Please select a product.");
+      return;
+    }
+    if (!manual.customerName.trim()) {
+      alert("Please enter the customer name.");
+      return;
+    }
+    const unitPrice = parseFloat(manual.unitPrice);
+    const quantity = parseInt(manual.quantity);
+    if (!unitPrice || unitPrice <= 0) {
+      alert("Please enter a valid unit price.");
+      return;
+    }
+    if (!quantity || quantity <= 0) {
+      alert("Please enter a valid quantity.");
+      return;
+    }
+
+    setSavingManual(true);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product.id,
+          productTitle: product.title,
+          productPrice: unitPrice,
+          quantity,
+          userName: manual.customerName.trim(),
+          customerPhone: manual.customerPhone.trim() || undefined,
+          paymentMethod: manual.paymentMethod,
+          paymentStatus: manual.paymentStatus,
+          status: manual.status,
+          fulfillmentMethod: "pickup",
+          category: product.category,
+          subcategory: product.subcategory ?? undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowManualModal(false);
+        // Reload orders so the new manual sale appears
+        const fresh = await getOrdersForMyIndustryProducts();
+        setOrders(fresh as Order[]);
+      } else {
+        alert(data.message || "Failed to record the sale.");
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setSavingManual(false);
+    }
+  };
 
   const downloadReport = async () => {
     if (!filtered.length) return;
@@ -371,14 +465,30 @@ export default function IndustryOrdersPage() {
             </div>
           ))}
         </div>
-          <button
-            onClick={downloadReport}
-            disabled={downloading || orders.length === 0}
-            className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl bg-[#1e3a5f] text-white hover:bg-[#16304f] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-          >
-            <Download className="w-4 h-4" />
-            {downloading ? "Generating…" : "Download Report"}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/industry/transactions"
+              className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl bg-white text-[#023E4A] border border-[#0097A7]/40 hover:bg-[#0097A7]/10 transition-colors"
+            >
+              <Receipt className="w-4 h-4" />
+              Transactions
+            </Link>
+            <button
+              onClick={openManualModal}
+              className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl bg-[#0097A7] text-white hover:bg-[#007e8c] transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Record Manual Sale
+            </button>
+            <button
+              onClick={downloadReport}
+              disabled={downloading || orders.length === 0}
+              className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl bg-[#1e3a5f] text-white hover:bg-[#16304f] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Download className="w-4 h-4" />
+              {downloading ? "Generating…" : "Download Report"}
+            </button>
+          </div>
         </div>
 
         {/* Status filter tabs */}
@@ -635,6 +745,171 @@ export default function IndustryOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* ── Record Manual Sale modal ───────────────────────────────── */}
+      {showManualModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => !savingManual && setShowManualModal(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#023E4A] to-[#0097A7] text-white rounded-t-2xl">
+              <div>
+                <h2 className="text-lg font-bold">Record Manual Sale</h2>
+                <p className="text-white/70 text-xs">For products sold in person — not through an online order</p>
+              </div>
+              <button
+                onClick={() => !savingManual && setShowManualModal(false)}
+                className="text-white/80 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="p-6 space-y-4">
+              {/* Product */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Product *</label>
+                <select
+                  value={manual.productId}
+                  onChange={(e) => selectManualProduct(e.target.value)}
+                  className="w-full text-sm px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#0097A7] focus:ring-1 focus:ring-[#0097A7] bg-white"
+                >
+                  <option value="">
+                    {myProducts.length === 0 ? "Loading your products…" : "Select a product"}
+                  </option>
+                  {myProducts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Unit price + quantity */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Unit Price (RWF) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={manual.unitPrice}
+                    onChange={(e) => setManual((m) => ({ ...m, unitPrice: e.target.value }))}
+                    placeholder="0"
+                    className="w-full text-sm px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#0097A7] focus:ring-1 focus:ring-[#0097A7]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Quantity *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={manual.quantity}
+                    onChange={(e) => setManual((m) => ({ ...m, quantity: e.target.value }))}
+                    className="w-full text-sm px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#0097A7] focus:ring-1 focus:ring-[#0097A7]"
+                  />
+                </div>
+              </div>
+
+              {/* Customer name + phone */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Customer Name *</label>
+                  <input
+                    type="text"
+                    value={manual.customerName}
+                    onChange={(e) => setManual((m) => ({ ...m, customerName: e.target.value }))}
+                    placeholder="e.g. John Doe"
+                    className="w-full text-sm px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#0097A7] focus:ring-1 focus:ring-[#0097A7]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Customer Phone</label>
+                  <input
+                    type="text"
+                    value={manual.customerPhone}
+                    onChange={(e) => setManual((m) => ({ ...m, customerPhone: e.target.value }))}
+                    placeholder="Optional"
+                    className="w-full text-sm px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#0097A7] focus:ring-1 focus:ring-[#0097A7]"
+                  />
+                </div>
+              </div>
+
+              {/* Payment method + status */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Payment Method</label>
+                  <select
+                    value={manual.paymentMethod}
+                    onChange={(e) => setManual((m) => ({ ...m, paymentMethod: e.target.value }))}
+                    className="w-full text-sm px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#0097A7] focus:ring-1 focus:ring-[#0097A7] bg-white"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="mobile_money">Mobile Money</option>
+                    <option value="card">Card</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Payment Status</label>
+                  <select
+                    value={manual.paymentStatus}
+                    onChange={(e) => setManual((m) => ({ ...m, paymentStatus: e.target.value }))}
+                    className="w-full text-sm px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#0097A7] focus:ring-1 focus:ring-[#0097A7] bg-white"
+                  >
+                    {PAYMENT_STATUSES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Order status */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Order Status</label>
+                <select
+                  value={manual.status}
+                  onChange={(e) => setManual((m) => ({ ...m, status: e.target.value }))}
+                  className="w-full text-sm px-3 py-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#0097A7] focus:ring-1 focus:ring-[#0097A7] bg-white"
+                >
+                  {ORDER_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Total preview */}
+              <div className="flex items-center justify-between bg-[#f8fafc] border border-gray-200 rounded-lg px-4 py-3">
+                <span className="text-sm font-medium text-gray-600">Total</span>
+                <span className="text-lg font-black text-[#1e3a5f]">RWF {manualTotal.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100">
+              <button
+                onClick={() => setShowManualModal(false)}
+                disabled={savingManual}
+                className="text-sm font-semibold px-4 py-2.5 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRecordManualSale}
+                disabled={savingManual}
+                className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl bg-[#0097A7] text-white hover:bg-[#007e8c] transition-colors disabled:opacity-50"
+              >
+                {savingManual
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Save className="w-4 h-4" />}
+                {savingManual ? "Recording…" : "Record Sale"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

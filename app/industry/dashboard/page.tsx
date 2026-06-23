@@ -197,107 +197,78 @@ function IndustryDashboardContent() {
       {activeTab === "stock" && (
         <div className="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
           <h2 className="text-lg font-bold text-gray-800 mb-6">Stock Management Tools</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
             {/* Financial KPI card */}
             <Link
               href="/industry/financial-kpi"
-              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex items-start gap-4 hover:shadow-md hover:border-[#06B6D4] transition-all"
+              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:border-[#06B6D4] hover:-translate-y-0.5 transition-all"
             >
               <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition-colors">
                 <TrendingUp className="w-6 h-6 text-[#023E4A]" />
               </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 text-base">Stock Records</h3>
-                <p className="text-gray-500 text-sm mt-1">
-                  Record and track all raw materials and finished products, monitor stock movements in and out.
-                </p>
-                <span className="inline-flex items-center gap-1 mt-3 text-[#023E4A] text-sm font-medium group-hover:gap-2 transition-all">
-                  Open records <ArrowRight className="w-4 h-4" />
-                </span>
-              </div>
+              <h3 className="font-semibold text-gray-900 text-base flex-1">Stock Records</h3>
+              <span className="w-9 h-9 rounded-full bg-cyan-50 text-[#023E4A] flex items-center justify-center shrink-0 group-hover:bg-[#023E4A] group-hover:text-white transition-colors">
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
             </Link>
 
             {/* Price Calculator card */}
             <Link
               href="/industry/price-calculator"
-              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex items-start gap-4 hover:shadow-md hover:border-[#06B6D4] transition-all"
+              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:border-[#06B6D4] hover:-translate-y-0.5 transition-all"
             >
               <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition-colors">
                 <Calculator className="w-6 h-6 text-[#023E4A]" />
               </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 text-base">Industry Price Calculator</h3>
-                <p className="text-gray-500 text-sm mt-1">
-                  Calculate the cost of your finished product and confirm a price to carry forward when uploading.
-                </p>
-                <span className="inline-flex items-center gap-1 mt-3 text-[#023E4A] text-sm font-medium group-hover:gap-2 transition-all">
-                  Open calculator <ArrowRight className="w-4 h-4" />
-                </span>
-              </div>
+              <h3 className="font-semibold text-gray-900 text-base flex-1">Industry Price Calculator</h3>
+              <span className="w-9 h-9 rounded-full bg-cyan-50 text-[#023E4A] flex items-center justify-center shrink-0 group-hover:bg-[#023E4A] group-hover:text-white transition-colors">
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
             </Link>
 
             {/* Finished Product Calculator card */}
             <Link
               href="/industry/finished-product-calculator"
-              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex items-start gap-4 hover:shadow-md hover:border-[#06B6D4] transition-all"
+              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:border-[#06B6D4] hover:-translate-y-0.5 transition-all"
             >
               <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition-colors">
                 <Calculator className="w-6 h-6 text-[#023E4A]" />
               </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 text-base">Finished Products Price Calculator</h3>
-                <p className="text-gray-500 text-sm mt-1">
-                  Calculate total cost, recommended selling price and net profit for any finished product.
-                </p>
-                <span className="inline-flex items-center gap-1 mt-3 text-[#023E4A] text-sm font-medium group-hover:gap-2 transition-all">
-                  Open calculator <ArrowRight className="w-4 h-4" />
-                </span>
-              </div>
+              <h3 className="font-semibold text-gray-900 text-base flex-1">Finished Products Price Calculator</h3>
+              <span className="w-9 h-9 rounded-full bg-cyan-50 text-[#023E4A] flex items-center justify-center shrink-0 group-hover:bg-[#023E4A] group-hover:text-white transition-colors">
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
             </Link>
 
-          </div>
-
-          {/* Customer Orders + Analytics cards */}
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Customer Orders card */}
             <Link
               href="/industry/orders"
-              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex items-start gap-4 hover:shadow-md hover:border-[#06B6D4] transition-all"
+              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:border-[#06B6D4] hover:-translate-y-0.5 transition-all"
             >
               <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition-colors">
                 <ShoppingBag className="w-6 h-6 text-[#023E4A]" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900 text-base">Customer Orders</h3>
-                </div>
-                <p className="text-gray-500 text-sm mt-1">
-                  View all orders, requests, and purchases made by customers for your industrial products.
-                </p>
-                <span className="inline-flex items-center gap-1 mt-3 text-[#023E4A] text-sm font-medium group-hover:gap-2 transition-all">
-                  View orders <ArrowRight className="w-4 h-4" />
-                </span>
-              </div>
+              <h3 className="font-semibold text-gray-900 text-base flex-1">Customer Orders</h3>
+              <span className="w-9 h-9 rounded-full bg-cyan-50 text-[#023E4A] flex items-center justify-center shrink-0 group-hover:bg-[#023E4A] group-hover:text-white transition-colors">
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
             </Link>
 
             {/* Analytics card */}
             <Link
               href="/industry/analytics"
-              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex items-start gap-4 hover:shadow-md hover:border-[#06B6D4] transition-all"
+              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:border-[#06B6D4] hover:-translate-y-0.5 transition-all"
             >
               <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition-colors">
                 <BarChart2 className="w-6 h-6 text-[#023E4A]" />
               </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 text-base">Sales Analytics</h3>
-                <p className="text-gray-500 text-sm mt-1">
-                  Track monthly product sales, quantities, revenue, net profit and losses per product.
-                </p>
-                <span className="inline-flex items-center gap-1 mt-3 text-[#023E4A] text-sm font-medium group-hover:gap-2 transition-all">
-                  View analytics <ArrowRight className="w-4 h-4" />
-                </span>
-              </div>
+              <h3 className="font-semibold text-gray-900 text-base flex-1">Sales Analytics</h3>
+              <span className="w-9 h-9 rounded-full bg-cyan-50 text-[#023E4A] flex items-center justify-center shrink-0 group-hover:bg-[#023E4A] group-hover:text-white transition-colors">
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
             </Link>
+
           </div>
         </div>
       )}
@@ -452,6 +423,7 @@ function IndustryDashboardContent() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

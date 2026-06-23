@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
+import AnnouncementBanner from "@/components/AnnouncementBanner";
 import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
 import AboutSection, {
@@ -19,7 +20,6 @@ import {
   Package,
   Car,
   Factory,
-  Layers,
   BoxesIcon,
   Search,
 } from "lucide-react";
@@ -99,6 +99,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen">
+      <AnnouncementBanner />
       <Header />
       <Hero products={products} />
 
@@ -230,32 +231,10 @@ export default function HomePage() {
             <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
               <Factory className="w-5 h-5 text-[#023E4A]" /> Industry
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {/* Industry — Raw Materials */}
-              <button
-                onClick={() => openSearch({ category: "Industry", subcategory: "raw-materials", categoryLabel: "Industry — Raw Materials", browseHref: "/industry/raw-materials", accentColor: "slate" })}
-                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-slate-400 text-left w-full"
-              >
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-[#023E4A] to-[#0097A7] text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <Layers className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-lg font-bold text-gray-900 mb-2">Raw Materials</h4>
-                  <p className="text-sm text-gray-600">Industrial raw materials & inputs</p>
-                  <div className="mt-4 flex items-center justify-center gap-2">
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                      {getProductsByCategory().industry.rawMaterials.length} items
-                    </span>
-                    <span className="text-xs text-[#023E4A] flex items-center gap-0.5 font-medium">
-                      <Search className="w-3 h-3" /> Find supplier
-                    </span>
-                  </div>
-                </div>
-              </button>
-
-              {/* Industry — Finished Products */}
-              <button
-                onClick={() => openSearch({ category: "Industry", subcategory: "finished-products", categoryLabel: "Industry — Finished Products", browseHref: "/industry/finished-products", accentColor: "slate" })}
+            <div className="grid grid-cols-1">
+              {/* Industry — Finished Products → browse industries, then their products */}
+              <Link
+                href="/industry/finished-products"
                 className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-slate-400 text-left w-full"
               >
                 <div className="flex flex-col items-center text-center">
@@ -263,17 +242,17 @@ export default function HomePage() {
                     <BoxesIcon className="w-6 h-6" />
                   </div>
                   <h4 className="text-lg font-bold text-gray-900 mb-2">Finished Products</h4>
-                  <p className="text-sm text-gray-600">Manufactured & finished goods</p>
+                  <p className="text-sm text-gray-600">Browse industries and the products they sell</p>
                   <div className="mt-4 flex items-center justify-center gap-2">
                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                       {getProductsByCategory().industry.finishedProducts.length} items
                     </span>
                     <span className="text-xs text-teal-600 flex items-center gap-0.5 font-medium">
-                      <Search className="w-3 h-3" /> Find supplier
+                      <ArrowRight className="w-3 h-3" /> View industries
                     </span>
                   </div>
                 </div>
-              </button>
+              </Link>
             </div>
           </div>
 

@@ -133,25 +133,16 @@ export async function signup(prevState: any, formData: FormData) {
     if (existingUser) return { success: false, message: "Email already exists." };
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await prisma.user.create({
-      data: { name, email, password: hashedPassword, category, province, district, sector, zone },
+    await prisma.user.create({
+      data: { name, email, password: hashedPassword, approved: false, category, province, district, sector, zone },
     });
 
-    // Set session cookie for user
-    const cookieStore = await cookies();
-    cookieStore.set("user_session", user.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: SESSION_DURATION,
-      path: "/",
-    });
-
-    redirect("/user/dashboard"); // redirect normal user after signup
+    // Do NOT log the user in yet — an admin must approve the account first.
+    return {
+      success: true,
+      message: "Account created! An administrator must approve your account before you can log in. You'll be able to sign in once approved.",
+    };
   } catch (error) {
-    // Re-throw Next.js redirect errors so they can be handled properly
-    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
-      throw error;
-    }
     console.error("Signup error:", error);
     return { success: false, message: "Unexpected error during signup." };
   }
@@ -172,6 +163,14 @@ export async function loginUser(prevState: any, formData: FormData) {
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) return { success: false, message: "Invalid credentials." };
+
+    // Block login until an admin has approved this account.
+    if (!user.approved) {
+      return {
+        success: false,
+        message: "Your account is pending administrator approval. Please try again once it has been approved.",
+      };
+    }
 
     const cookieStore = await cookies();
     cookieStore.set("user_session", user.id, {

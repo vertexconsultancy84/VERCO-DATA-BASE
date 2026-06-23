@@ -1,15 +1,29 @@
 "use server";
 
 import { MongoClient, ObjectId } from "mongodb";
+import dns from "dns";
 import { getUserSession } from "./auth";
 import { revalidatePath } from "next/cache";
 
 const DB_NAME = "VERTEX_DB";
 
+// mongodb+srv:// URIs require a DNS SRV lookup. Some networks/ISPs resolve SRV
+// records very slowly or not at all, causing "querySrv ETIMEOUT". Point DNS at
+// reliable public resolvers so Atlas connections stay fast and stable.
+try {
+  dns.setServers(["8.8.8.8", "1.1.1.1", ...dns.getServers()]);
+} catch {
+  /* ignore — fall back to system DNS */
+}
+
 function getMongoClient() {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) throw new Error("DATABASE_URL not set");
-  return new MongoClient(dbUrl);
+  return new MongoClient(dbUrl, {
+    // Fail fast instead of hanging ~60s when the cluster can't be reached.
+    serverSelectionTimeoutMS: 15000,
+    connectTimeoutMS: 15000,
+  });
 }
 
 export interface ExtraFeed {
@@ -641,6 +655,10 @@ export interface FinishedProductStockRecord {
   customExpenses: CustomExpense[];
   totalProductionCost: number;
   costPerUnit: number;
+  // supermarket variant: products are purchased, so these track on-hand stock
+  // and the chosen record date; optional so the industry variant is unaffected
+  currentStock?: number;
+  recordDate?: string;
   createdAt: string;
 }
 
@@ -693,6 +711,8 @@ export async function getFinishedProductStockRecords(): Promise<FinishedProductS
       customExpenses: (d.customExpenses ?? []) as CustomExpense[],
       totalProductionCost: d.totalProductionCost as number,
       costPerUnit: d.costPerUnit as number,
+      currentStock: d.currentStock as number | undefined,
+      recordDate: d.recordDate as string | undefined,
       createdAt: (d.createdAt as Date).toISOString(),
     }));
   } catch {
@@ -716,6 +736,234 @@ export async function deleteFinishedProductStockRecord(id: string) {
     return { success: true };
   } catch (error) {
     console.error("deleteFinishedProductStockRecord:", error);
+    return { success: false, message: "Failed to delete" };
+  } finally {
+    await client.close();
+  }
+}
+
+// ─── Stock of Raw Materials (simple list) ──────────────────────────────────
+// A lightweight stock list: name, quantity purchased and amount.
+// Independent from RawMaterialStock (cost-per-unit) records.
+
+export interface RawMaterialStockItem {
+  id: string;
+  materialName: string;
+  quantityPurchased: number;
+  // remaining quantity after usage in the raw materials calculator; for older
+  // records that predate this field it falls back to the purchased quantity
+  quantityRemaining: number;
+  amount: number;
+  createdAt: string;
+}
+
+export async function saveRawMaterialStockItem(
+  data: Omit<RawMaterialStockItem, "id" | "createdAt">
+) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    await client.db(DB_NAME).collection("RawMaterialStockList").insertOne({
+      _id: new ObjectId(),
+      userId: session.id,
+      ...data,
+      createdAt: new Date(),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("saveRawMaterialStockItem:", error);
+    return { success: false, message: "Failed to save" };
+  } finally {
+    await client.close();
+  }
+}
+
+export async function getRawMaterialStockItems(): Promise<RawMaterialStockItem[]> {
+  const session = await getUserSession();
+  if (!session) return [];
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    const docs = await client
+      .db(DB_NAME)
+      .collection("RawMaterialStockList")
+      .find({ userId: session.id })
+      .sort({ createdAt: -1 })
+      .toArray();
+    return docs.map((d) => ({
+      id: d._id.toString(),
+      materialName: d.materialName as string,
+      quantityPurchased: d.quantityPurchased as number,
+      quantityRemaining: (d.quantityRemaining ?? d.quantityPurchased) as number,
+      amount: d.amount as number,
+      createdAt: (d.createdAt as Date).toISOString(),
+    }));
+  } catch {
+    return [];
+  } finally {
+    await client.close();
+  }
+}
+
+export async function updateRawMaterialStockItem(
+  id: string,
+  data: Omit<RawMaterialStockItem, "id" | "createdAt">
+) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    await client.db(DB_NAME).collection("RawMaterialStockList").updateOne(
+      { _id: new ObjectId(id), userId: session.id },
+      { $set: { ...data } }
+    );
+    return { success: true };
+  } catch (error) {
+    console.error("updateRawMaterialStockItem:", error);
+    return { success: false, message: "Failed to update" };
+  } finally {
+    await client.close();
+  }
+}
+
+export async function deleteRawMaterialStockItem(id: string) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    await client.db(DB_NAME).collection("RawMaterialStockList").deleteOne({
+      _id: new ObjectId(id),
+      userId: session.id,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("deleteRawMaterialStockItem:", error);
+    return { success: false, message: "Failed to delete" };
+  } finally {
+    await client.close();
+  }
+}
+
+// ─── Service Transactions (records of payments made without a receipt) ──────
+// The manager logs each service transaction: who provided the service (giver
+// company), who received it (name, email, phone, optional ID) and the amount
+// paid. Scoped per logged-in manager.
+
+export interface ServiceTransaction {
+  id: string;
+  giverCompany: string;        // name of the giver of services (company)
+  receiverName: string;        // receiver of the services
+  receiverEmail: string;
+  receiverPhone: string;
+  receiverId?: string;         // optional national ID / passport
+  serviceDescription?: string; // optional note about the service rendered
+  amountPaid: number;
+  date: string;                // date of the transaction (ISO)
+  createdAt: string;
+}
+
+export async function saveServiceTransaction(
+  data: Omit<ServiceTransaction, "id" | "createdAt">
+) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    await client.db(DB_NAME).collection("ServiceTransaction").insertOne({
+      _id: new ObjectId(),
+      userId: session.id,
+      ...data,
+      date: new Date(data.date),
+      createdAt: new Date(),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("saveServiceTransaction:", error);
+    return { success: false, message: "Failed to save" };
+  } finally {
+    await client.close();
+  }
+}
+
+export async function getServiceTransactions(): Promise<ServiceTransaction[]> {
+  const session = await getUserSession();
+  if (!session) return [];
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    const docs = await client
+      .db(DB_NAME)
+      .collection("ServiceTransaction")
+      .find({ userId: session.id })
+      .sort({ date: -1, createdAt: -1 })
+      .toArray();
+    return docs.map((d) => ({
+      id: d._id.toString(),
+      giverCompany: d.giverCompany as string,
+      receiverName: d.receiverName as string,
+      receiverEmail: d.receiverEmail as string,
+      receiverPhone: d.receiverPhone as string,
+      receiverId: d.receiverId as string | undefined,
+      serviceDescription: d.serviceDescription as string | undefined,
+      amountPaid: d.amountPaid as number,
+      date: (d.date as Date).toISOString(),
+      createdAt: (d.createdAt as Date).toISOString(),
+    }));
+  } catch {
+    return [];
+  } finally {
+    await client.close();
+  }
+}
+
+export async function updateServiceTransaction(
+  id: string,
+  data: Omit<ServiceTransaction, "id" | "createdAt">
+) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    await client.db(DB_NAME).collection("ServiceTransaction").updateOne(
+      { _id: new ObjectId(id), userId: session.id },
+      { $set: { ...data, date: new Date(data.date) } }
+    );
+    return { success: true };
+  } catch (error) {
+    console.error("updateServiceTransaction:", error);
+    return { success: false, message: "Failed to update" };
+  } finally {
+    await client.close();
+  }
+}
+
+export async function deleteServiceTransaction(id: string) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    await client.db(DB_NAME).collection("ServiceTransaction").deleteOne({
+      _id: new ObjectId(id),
+      userId: session.id,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("deleteServiceTransaction:", error);
     return { success: false, message: "Failed to delete" };
   } finally {
     await client.close();

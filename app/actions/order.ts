@@ -39,6 +39,32 @@ export async function getOrdersForMyIndustryProducts() {
   }
 }
 
+// Minimal list of the logged-in manager's own products — used to populate
+// the "Record Manual Sale" form on the orders page.
+export async function getMyProductsForSale() {
+  try {
+    const user = await getSessionUser();
+    if (!user) return [];
+
+    const products = await prisma.product.findMany({
+      where: { userId: user.id },
+      select: { id: true, title: true, price: true, category: true, subcategory: true },
+      orderBy: { title: "asc" },
+    });
+
+    return products.map((p) => ({
+      id: p.id,
+      title: p.title,
+      price: p.price ?? 0,
+      category: String(p.category),
+      subcategory: p.subcategory ?? null,
+    }));
+  } catch (error) {
+    console.error("getMyProductsForSale:", error);
+    return [];
+  }
+}
+
 // Orders placed BY the logged-in user (buyer view)
 // Matches by userId (reliable after the API fix) AND userEmail (fallback for older orders)
 export async function getUserPlacedOrders() {

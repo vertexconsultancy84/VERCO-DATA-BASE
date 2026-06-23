@@ -10,6 +10,7 @@ export async function GET() {
         name: true,
         email: true,
         phone: true,
+        approved: true,
         category: true,
         province: true,
         district: true,

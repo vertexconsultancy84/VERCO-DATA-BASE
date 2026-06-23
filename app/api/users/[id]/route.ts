@@ -1,6 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// Approve (or revoke) a user account. Used by the admin dashboard "Allow" button.
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  if (!id) {
+    return NextResponse.json(
+      { success: false, message: "User ID is required" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    const approved = body?.approved !== undefined ? Boolean(body.approved) : true;
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { approved },
+      select: { id: true, approved: true },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: approved ? "User approved successfully." : "User access revoked.",
+      user,
+    });
+  } catch (error: any) {
+    console.error("Error updating user approval:", error);
+    if (error?.code === "P2025") {
+      return NextResponse.json(
+        { success: false, message: "User not found." },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json(
+      { success: false, message: "Failed to update user." },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

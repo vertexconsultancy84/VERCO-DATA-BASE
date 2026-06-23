@@ -64,6 +64,7 @@ model User {
   email     String   @unique
   phone     String?
   password  String
+  approved  Boolean  @default(false) // Admin must approve before the user can log in
   category  String   @default("OtherProducts")
   province  String?
   district  String?
@@ -282,6 +283,24 @@ model SiteVisitor {
   page      String   @default("/")
   referrer  String?
   createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId   // recipient user
+  title     String?                  // optional short subject
+  message   String                   // body of the message from the admin
+  read      Boolean  @default(false) // whether the user has opened it
+  createdAt DateTime @default(now())
+}
+
+// Public site-wide announcement shown on the home page to all visitors.
+model Announcement {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  message   String
+  active    Boolean  @default(true) // admin can show/hide without deleting
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Contract {

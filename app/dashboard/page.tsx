@@ -9,10 +9,11 @@ import OrderComponent from "./_components/order";
 import ContractsTable from "./_components/contracts-table";
 import VisitorsTable from "./_components/visitors-table";
 import UsersTable from "./_components/users-table";
+import AnnouncementsManager from "./_components/announcements-manager";
 import { getAdminStats } from "../actions/admin";
 import { getAllTeamMembers } from "../actions/team";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Users2, FileText, ShoppingCart, Eye, UserCog } from "lucide-react";
+import { BarChart3, Users2, FileText, ShoppingCart, Eye, UserCog, Megaphone } from "lucide-react";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
@@ -27,6 +28,7 @@ export default function DashboardPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [approvingUserId, setApprovingUserId] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -92,6 +94,29 @@ export default function DashboardPage() {
       setUsersLoading(false);
     }
   }, []);
+
+  const handleApproveUser = async (userId: string) => {
+    setApprovingUserId(userId);
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, approved: true } : u))
+        );
+      } else {
+        alert(data.message || "Failed to approve user.");
+      }
+    } catch {
+      alert("Failed to approve user.");
+    } finally {
+      setApprovingUserId(null);
+    }
+  };
 
   const handleDeleteUser = async (userId: string) => {
     setIsDeletingUser(true);
@@ -215,7 +240,7 @@ export default function DashboardPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8">
           <TabsTrigger
             value="overview"
             className="flex items-center gap-2 text-xs sm:text-sm"
@@ -271,6 +296,14 @@ export default function DashboardPage() {
             <UserCog className="w-4 h-4" />
             <span className="hidden sm:inline">Users</span>
             <span className="sm:hidden">Users</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="announcements"
+            className="flex items-center gap-2 text-xs sm:text-sm"
+          >
+            <Megaphone className="w-4 h-4 text-[#0097A7]" />
+            <span className="hidden sm:inline">Announce</span>
+            <span className="sm:hidden">Notify</span>
           </TabsTrigger>
         </TabsList>
 
@@ -345,8 +378,14 @@ export default function DashboardPage() {
               users={users}
               onDeleteUser={handleDeleteUser}
               isDeleting={isDeletingUser}
+              onApproveUser={handleApproveUser}
+              approvingUserId={approvingUserId}
             />
           )}
+        </TabsContent>
+
+        <TabsContent value="announcements" className="space-y-6">
+          <AnnouncementsManager />
         </TabsContent>
       </Tabs>
     </>
