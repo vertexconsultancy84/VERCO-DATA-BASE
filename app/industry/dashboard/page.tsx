@@ -10,7 +10,7 @@ import Header from "@/components/Header";
 import Link from "next/link";
 import {
   Factory, Calculator, Upload, Package, Edit, Trash2, Eye,
-  CheckCircle, ArrowRight, Layers, BoxesIcon, TrendingUp, ShoppingBag, BarChart2,
+  CheckCircle, ArrowRight, Layers, BoxesIcon, TrendingUp, ShoppingBag, BarChart2, Receipt,
 } from "lucide-react";
 
 interface Product {
@@ -37,6 +37,52 @@ const SUBCATEGORY_LABELS: Record<string, string> = {
   "raw-materials": "Raw Materials",
   "finished-products": "Finished Products",
 };
+
+// Stock Management tool cards — each with its own icon and accent gradient.
+const STOCK_TOOLS = [
+  {
+    href: "/industry/financial-kpi",
+    title: "Stock Records",
+    desc: "Track inventory levels and financial KPIs",
+    icon: TrendingUp,
+    gradient: "from-emerald-500 to-teal-600",
+  },
+  {
+    href: "/industry/price-calculator",
+    title: "Industry Price Calculator",
+    desc: "Compute selling prices for raw materials",
+    icon: Calculator,
+    gradient: "from-[#0097A7] to-cyan-600",
+  },
+  {
+    href: "/industry/finished-product-calculator",
+    title: "Finished Products Calculator",
+    desc: "Price your finished manufactured goods",
+    icon: Calculator,
+    gradient: "from-indigo-500 to-blue-600",
+  },
+  {
+    href: "/industry/orders",
+    title: "Customer Orders",
+    desc: "Manage orders, payments and deliveries",
+    icon: ShoppingBag,
+    gradient: "from-amber-500 to-orange-600",
+  },
+  {
+    href: "/industry/analytics",
+    title: "Sales Analytics",
+    desc: "Visualize revenue and sales trends",
+    icon: BarChart2,
+    gradient: "from-fuchsia-500 to-purple-600",
+  },
+  {
+    href: "/industry/transactions",
+    title: "Transaction Records",
+    desc: "Log service payments made in person",
+    icon: Receipt,
+    gradient: "from-rose-500 to-pink-600",
+  },
+] as const;
 
 function IndustryDashboardContent() {
   const searchParams = useSearchParams();
@@ -124,17 +170,17 @@ function IndustryDashboardContent() {
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-r from-[#023E4A] to-[#0097A7] text-white">
         <div className="absolute inset-0 bg-black/10" />
-        <div className="relative max-w-7xl mx-auto px-4 pt-28 pb-16 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center shrink-0">
-              <Factory className="w-8 h-8 text-white" />
+        <div className="relative max-w-7xl mx-auto px-4 pt-20 pb-8 sm:px-6 sm:pt-24 sm:pb-10 lg:px-8">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 ring-1 ring-white/25 rounded-xl flex items-center justify-center shrink-0">
+              <Factory className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
             </div>
-            <div>
-              <p className="text-white/70 text-sm font-medium uppercase tracking-wide">
+            <div className="min-w-0">
+              <p className="text-white/70 text-xs sm:text-sm font-medium uppercase tracking-wide">
                 Industry Dashboard
               </p>
-              <h1 className="text-3xl font-bold">Welcome, {user.name}!</h1>
-              <p className="mt-1 text-white/80">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">Welcome, {user.name}!</h1>
+              <p className="mt-0.5 text-sm text-white/80 hidden sm:block">
                 Manage your stock pricing and industrial product listings
               </p>
             </div>
@@ -196,79 +242,42 @@ function IndustryDashboardContent() {
       {/* ── Tab: Stock Management ──────────────────────────────────────── */}
       {activeTab === "stock" && (
         <div className="max-w-7xl mx-auto px-4 py-10 sm:px-6 lg:px-8">
-          <h2 className="text-lg font-bold text-gray-800 mb-6">Stock Management Tools</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="relative overflow-hidden rounded-3xl border border-[#0097A7]/15 bg-gradient-to-br from-[#023E4A] via-[#024d5c] to-[#0097A7] p-6 sm:p-8 shadow-lg">
+            {/* decorative glows */}
+            <div className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full bg-[#06B6D4]/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-[#D4A017]/10 blur-3xl" />
 
-            {/* Financial KPI card */}
-            <Link
-              href="/industry/financial-kpi"
-              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:border-[#06B6D4] hover:-translate-y-0.5 transition-all"
-            >
-              <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition-colors">
-                <TrendingUp className="w-6 h-6 text-[#023E4A]" />
-              </div>
-              <h3 className="font-semibold text-gray-900 text-base flex-1">Stock Records</h3>
-              <span className="w-9 h-9 rounded-full bg-cyan-50 text-[#023E4A] flex items-center justify-center shrink-0 group-hover:bg-[#023E4A] group-hover:text-white transition-colors">
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </Link>
+            <div className="relative mb-6">
+              <p className="text-[#7FE7F1] text-xs font-semibold uppercase tracking-wider">Workspace</p>
+              <h2 className="text-2xl font-bold text-white">Stock Management Tools</h2>
+              <p className="text-white/70 text-sm mt-1">Everything you need to price, list, track and analyze your stock</p>
+            </div>
 
-            {/* Price Calculator card */}
-            <Link
-              href="/industry/price-calculator"
-              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:border-[#06B6D4] hover:-translate-y-0.5 transition-all"
-            >
-              <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition-colors">
-                <Calculator className="w-6 h-6 text-[#023E4A]" />
-              </div>
-              <h3 className="font-semibold text-gray-900 text-base flex-1">Industry Price Calculator</h3>
-              <span className="w-9 h-9 rounded-full bg-cyan-50 text-[#023E4A] flex items-center justify-center shrink-0 group-hover:bg-[#023E4A] group-hover:text-white transition-colors">
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </Link>
-
-            {/* Finished Product Calculator card */}
-            <Link
-              href="/industry/finished-product-calculator"
-              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:border-[#06B6D4] hover:-translate-y-0.5 transition-all"
-            >
-              <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition-colors">
-                <Calculator className="w-6 h-6 text-[#023E4A]" />
-              </div>
-              <h3 className="font-semibold text-gray-900 text-base flex-1">Finished Products Price Calculator</h3>
-              <span className="w-9 h-9 rounded-full bg-cyan-50 text-[#023E4A] flex items-center justify-center shrink-0 group-hover:bg-[#023E4A] group-hover:text-white transition-colors">
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </Link>
-
-            {/* Customer Orders card */}
-            <Link
-              href="/industry/orders"
-              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:border-[#06B6D4] hover:-translate-y-0.5 transition-all"
-            >
-              <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition-colors">
-                <ShoppingBag className="w-6 h-6 text-[#023E4A]" />
-              </div>
-              <h3 className="font-semibold text-gray-900 text-base flex-1">Customer Orders</h3>
-              <span className="w-9 h-9 rounded-full bg-cyan-50 text-[#023E4A] flex items-center justify-center shrink-0 group-hover:bg-[#023E4A] group-hover:text-white transition-colors">
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </Link>
-
-            {/* Analytics card */}
-            <Link
-              href="/industry/analytics"
-              className="group bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center gap-4 hover:shadow-lg hover:border-[#06B6D4] hover:-translate-y-0.5 transition-all"
-            >
-              <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0 group-hover:bg-cyan-100 transition-colors">
-                <BarChart2 className="w-6 h-6 text-[#023E4A]" />
-              </div>
-              <h3 className="font-semibold text-gray-900 text-base flex-1">Sales Analytics</h3>
-              <span className="w-9 h-9 rounded-full bg-cyan-50 text-[#023E4A] flex items-center justify-center shrink-0 group-hover:bg-[#023E4A] group-hover:text-white transition-colors">
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </Link>
-
+            <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {STOCK_TOOLS.map(({ href, title, desc, icon: Icon, gradient }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="group relative overflow-hidden bg-white/95 backdrop-blur rounded-2xl border border-white/40 shadow-sm p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-200"
+                >
+                  {/* hover accent bar */}
+                  <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                  <div className="flex items-start gap-4">
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform`}>
+                      <Icon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 text-base leading-tight">{title}</h3>
+                      <p className="text-xs text-gray-500 mt-1 leading-snug">{desc}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 mt-4 text-sm font-semibold text-[#023E4A] group-hover:gap-2 transition-all">
+                    Open
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -300,7 +309,7 @@ function IndustryDashboardContent() {
                   <span>
                     Price from calculator:{" "}
                     <strong>
-                      $
+                      Frw{" "}
                       {confirmedPrice.toLocaleString("en-US", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
@@ -389,7 +398,7 @@ function IndustryDashboardContent() {
                             </span>
                             {product.price != null && (
                               <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                                ${product.price.toFixed(2)}
+                                Frw {product.price.toFixed(2)}
                               </span>
                             )}
                           </div>

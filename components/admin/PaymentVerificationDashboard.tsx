@@ -146,7 +146,7 @@ export default function PaymentVerificationDashboard() {
                   <div className="flex flex-col items-end gap-2">
                     {getPaymentStatusBadge(order.paymentStatus)}
                     <p className="text-lg font-bold text-blue-600">
-                      ${order.productPrice.toFixed(2)}
+                      Frw {order.productPrice.toFixed(2)}
                     </p>
                   </div>
                 </div>

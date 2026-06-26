@@ -131,6 +131,7 @@ export default function IndustryOrdersPage() {
           paymentStatus: manual.paymentStatus,
           status: manual.status,
           fulfillmentMethod: "pickup",
+          saleChannel: "manual",
           category: product.category,
           subcategory: product.subcategory ?? undefined,
         }),
@@ -172,11 +173,12 @@ export default function IndustryOrdersPage() {
 
       const cols: { header: string; width: number }[] = [
         { header: "#",               width: 7  },
-        { header: "Product",         width: 30 },
-        { header: "Customer",        width: 30 },
+        { header: "Product",         width: 26 },
+        { header: "Source",          width: 16 },
+        { header: "Customer",        width: 26 },
         { header: "Phone",           width: 18 },
         { header: "Delivery Person", width: 25 },
-        { header: "Delivery Address",width: 32 },
+        { header: "Delivery Address",width: 26 },
         { header: "Unit Price",      width: 20 },
         { header: "Qty",             width: 8  },
         { header: "Total",           width: 22 },
@@ -242,8 +244,9 @@ export default function IndustryOrdersPage() {
 
         const cells = [
           String(i + 1),
-          trunc(order.productTitle, 22),
-          trunc(order.userName, 20),
+          trunc(order.productTitle, 18),
+          (order as any).saleChannel === "manual" ? "Manual" : "Online",
+          trunc(order.userName, 18),
           trunc((order as any).customerPhone, 16),
           trunc((order as any).deliveryPersonName, 20),
           trunc((order as any).deliveryAddress, 26),
@@ -534,6 +537,7 @@ export default function IndustryOrdersPage() {
                 <tr className="bg-[#1e3a5f] text-white">
                   <th className="px-4 py-3 text-left font-semibold">#</th>
                   <th className="px-4 py-3 text-left font-semibold">Product</th>
+                  <th className="px-4 py-3 text-center font-semibold">Source</th>
                   <th className="px-4 py-3 text-left font-semibold">Customer</th>
                   <th className="px-4 py-3 text-left font-semibold">Phone</th>
                   <th className="px-4 py-3 text-left font-semibold">Delivery Person</th>
@@ -568,6 +572,24 @@ export default function IndustryOrdersPage() {
 
                       <td className="px-4 py-3 font-semibold text-[#1e3a5f] max-w-[140px] truncate">
                         {order.productTitle}
+                      </td>
+
+                      {/* Sale source — manual (sold in person) vs online (placed on site) */}
+                      <td className="px-4 py-3 text-center">
+                        {(() => {
+                          const isManual = (order as any).saleChannel === "manual";
+                          return (
+                            <span
+                              className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap ${
+                                isManual
+                                  ? "bg-purple-100 text-purple-700 border-purple-200"
+                                  : "bg-sky-100 text-sky-700 border-sky-200"
+                              }`}
+                            >
+                              {isManual ? "Manual" : "Online"}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       <td className="px-4 py-3">

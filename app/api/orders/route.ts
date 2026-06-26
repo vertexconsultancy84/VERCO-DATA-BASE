@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
       userEmail,
       customerPhone,
       fulfillmentMethod,
+      saleChannel,
       deliveryPersonName,
       deliveryAddress,
       village,
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
             u: {
               $set: {
                 fulfillmentMethod: fulfillmentMethod ?? "delivery",
+                saleChannel: saleChannel ?? "online",
                 deliveryPersonName: deliveryPersonName ?? null,
               },
             },

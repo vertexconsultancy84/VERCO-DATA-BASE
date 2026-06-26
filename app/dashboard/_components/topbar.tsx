@@ -23,8 +23,8 @@ export default function TopBar() {
               key={link.href}
               href={link.href}
               className={clsx(
-                "text-gray-700 hover:text-blue-600 font-medium transition-colors",
-                pathname === link.href && "text-blue-600 font-semibold"
+                "text-gray-700 hover:text-blue-600 transition-colors",
+                pathname === link.href ? "text-blue-600 font-semibold" : "font-medium"
               )}
             >
               {link.label}

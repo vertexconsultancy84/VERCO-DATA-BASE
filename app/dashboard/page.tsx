@@ -12,8 +12,20 @@ import UsersTable from "./_components/users-table";
 import AnnouncementsManager from "./_components/announcements-manager";
 import { getAdminStats } from "../actions/admin";
 import { getAllTeamMembers } from "../actions/team";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Users2, FileText, ShoppingCart, Eye, UserCog, Megaphone } from "lucide-react";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { BarChart3, Users2, FileText, ShoppingCart, Eye, UserCog, Megaphone, LayoutDashboard } from "lucide-react";
+import clsx from "clsx";
+
+const NAV_ITEMS = [
+  { value: "overview",      label: "Overview",      icon: BarChart3 },
+  { value: "records",       label: "All Records",   icon: FileText },
+  { value: "contracts",     label: "Contracts",     icon: FileText },
+  { value: "orders",        label: "Orders",        icon: ShoppingCart },
+  { value: "team",          label: "Team",          icon: Users2 },
+  { value: "visitors",      label: "Visitors",      icon: Eye },
+  { value: "users",         label: "Users",         icon: UserCog },
+  { value: "announcements", label: "Announcements", icon: Megaphone },
+] as const;
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
@@ -230,84 +242,75 @@ export default function DashboardPage() {
     await ensureTeamLoaded();
   }, [ensureTeamLoaded]);
 
+  const activeItem = NAV_ITEMS.find((i) => i.value === activeTab) ?? NAV_ITEMS[0];
+
   return (
-    <>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-          Admin Dashboard
-        </h1>
-        <LogoutButton />
-      </div>
+    <Tabs
+      value={activeTab}
+      onValueChange={setActiveTab}
+      className="flex flex-col lg:flex-row gap-6 items-start"
+    >
+      {/* ── Sidebar ─────────────────────────────────────────────── */}
+      <aside className="w-full lg:w-64 shrink-0">
+        <div className="lg:sticky lg:top-28 space-y-4">
+          {/* Brand card */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#023E4A] to-[#0097A7] p-5 text-white shadow-lg">
+            <div className="pointer-events-none absolute -top-10 -right-8 w-28 h-28 rounded-full bg-white/10 blur-2xl" />
+            <div className="relative flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <LayoutDashboard className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-white/70">Admin</p>
+                <h1 className="text-lg font-bold leading-tight">Dashboard</h1>
+              </div>
+            </div>
+          </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8">
-          <TabsTrigger
-            value="overview"
-            className="flex items-center gap-2 text-xs sm:text-sm"
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span className="hidden sm:inline">Overview</span>
-            <span className="sm:hidden">Overview</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="records"
-            className="flex items-center gap-2 text-xs sm:text-sm"
-          >
-            <FileText className="w-4 h-4" />
-            <span className="hidden sm:inline">All Records</span>
-            <span className="sm:hidden">Records</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="contracts"
-            className="flex items-center gap-2 text-xs sm:text-sm"
-          >
-            <FileText className="w-4 h-4 text-blue-600" />
-            <span className="hidden sm:inline">Contracts</span>
-            <span className="sm:hidden">Contracts</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="orders"
-            className="flex items-center gap-2 text-xs sm:text-sm"
-          >
-            <ShoppingCart className="w-4 h-4" />
-            <span className="hidden sm:inline">Orders</span>
-            <span className="sm:hidden">Orders</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="team"
-            className="flex items-center gap-2 text-xs sm:text-sm"
-          >
-            <Users2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Team</span>
-            <span className="sm:hidden">Team</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="visitors"
-            className="flex items-center gap-2 text-xs sm:text-sm"
-          >
-            <Eye className="w-4 h-4" />
-            <span className="hidden sm:inline">Visitors</span>
-            <span className="sm:hidden">Visitors</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="users"
-            className="flex items-center gap-2 text-xs sm:text-sm"
-          >
-            <UserCog className="w-4 h-4" />
-            <span className="hidden sm:inline">Users</span>
-            <span className="sm:hidden">Users</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="announcements"
-            className="flex items-center gap-2 text-xs sm:text-sm"
-          >
-            <Megaphone className="w-4 h-4 text-[#0097A7]" />
-            <span className="hidden sm:inline">Announce</span>
-            <span className="sm:hidden">Notify</span>
-          </TabsTrigger>
-        </TabsList>
+          {/* Nav */}
+          <nav className="rounded-2xl border border-gray-200 bg-white p-2 shadow-sm grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-1 gap-1">
+            {NAV_ITEMS.map(({ value, label, icon: Icon }) => {
+              const active = activeTab === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setActiveTab(value)}
+                  className={clsx(
+                    "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all",
+                    active
+                      ? "bg-gradient-to-r from-[#023E4A] to-[#0097A7] text-white shadow-sm"
+                      : "text-gray-600 hover:bg-gray-100"
+                  )}
+                >
+                  <Icon className={clsx("w-4 h-4 shrink-0", active ? "text-white" : "text-[#0097A7]")} />
+                  <span className="truncate">{label}</span>
+                </button>
+              );
+            })}
+          </nav>
 
-        <TabsContent value="overview" className="space-y-6">
+          {/* Logout */}
+          <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+            <LogoutButton />
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Content ─────────────────────────────────────────────── */}
+      <div className="flex-1 min-w-0 w-full space-y-6">
+        {/* Content header */}
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
+          <div className="w-11 h-11 rounded-xl bg-cyan-50 flex items-center justify-center shrink-0">
+            <activeItem.icon className="w-5 h-5 text-[#023E4A]" />
+          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 leading-tight">{activeItem.label}</h2>
+            <p className="text-sm text-gray-500">Admin Dashboard</p>
+          </div>
+        </div>
+
+        <TabsContent value="overview" className="space-y-6 mt-0">
           {statsLoading ? (
             <div className="rounded-lg border border-cyan-100 bg-cyan-50/40 px-6 py-12 text-center">
               <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-[#023E4A] border-t-transparent" />
@@ -387,7 +390,7 @@ export default function DashboardPage() {
         <TabsContent value="announcements" className="space-y-6">
           <AnnouncementsManager />
         </TabsContent>
-      </Tabs>
-    </>
+      </div>
+    </Tabs>
   );
 }

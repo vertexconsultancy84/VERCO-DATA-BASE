@@ -163,6 +163,7 @@ export default function ShoppingCartComponent() {
           productId: item.productId,
           productTitle: item.productTitle,
           productPrice: item.productPrice,
+          quantity: item.quantity,
           userId: currentSessionId,
           userName: `${customerDetails.firstName} ${customerDetails.lastName}`,
           userEmail: customerDetails.email,

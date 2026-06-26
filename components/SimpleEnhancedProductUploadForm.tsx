@@ -8,7 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Upload, X, Building } from "lucide-react";
+import {
+  MapPin, Upload, X, Building, FileText, Image as ImageIcon,
+  Phone, PackageCheck, Tag, CheckCircle2, Sparkles, Navigation,
+} from "lucide-react";
 
 // Matches view-products page categories exactly
 const realEstateSubcategories = {
@@ -54,6 +57,35 @@ const vehicleTypes = {
   motorcycle: "Motorcycle"
 };
 
+// Reusable section wrapper — gives the form a clean, grouped, card-based look.
+// Defined at module level (not inside the component) so inputs never remount.
+function FormSection({
+  icon: Icon,
+  title,
+  subtitle,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-gray-200 bg-gradient-to-b from-gray-50/80 to-white p-5 sm:p-6 shadow-sm">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#023E4A] to-[#0097A7] flex items-center justify-center shrink-0 shadow-sm">
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-bold text-gray-900 leading-tight">{title}</h3>
+          {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 interface SimpleEnhancedProductUploadFormProps {
   onSuccess?: () => void;
   initialData?: any;
@@ -79,22 +111,17 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
   const [ownerNationality, setOwnerNationality] = useState(initialData?.ownerNationality || "");
   const [ownerID, setOwnerID] = useState(initialData?.ownerID || "");
   const [ownerAddress, setOwnerAddress] = useState(initialData?.ownerAddress || "");
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    const newImages: string[] = [];
+  const processFiles = (files: FileList | File[]) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    
     Array.from(files).forEach(file => {
       if (allowedTypes.includes(file.type) && file.size <= 5 * 1024 * 1024) {
         const reader = new FileReader();
         reader.onload = (event) => {
           const result = event.target?.result as string;
-          newImages.push(result);
-          setPreviewImages(prev => [...prev, ...newImages]);
+          setPreviewImages(prev => [...prev, result]);
         };
         reader.readAsDataURL(file);
       } else {
@@ -103,6 +130,16 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
     });
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    processFiles(e.target.files);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files?.length) processFiles(e.dataTransfer.files);
+  };
 
   const removeImage = (index: number) => {
     setPreviewImages(prev => prev.filter((_, i) => i !== index));
@@ -222,231 +259,250 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
   };
 
   return (
-    <div>
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Title */}
-      <div>
-        <Label htmlFor="title">Product Title</Label>
-        <Input
-          id="title"
-          name="title"
-          type="text"
-          placeholder="Enter product title"
-          defaultValue={initialData?.title}
-          required
-          className="w-full"
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-5">
 
-      {/* Description */}
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          name="description"
-          placeholder="Describe your product..."
-          defaultValue={initialData?.description}
-          required
-          rows={4}
-          className="w-full resize-none"
-        />
-      </div>
+      {/* ── Product Details ─────────────────────────────────────── */}
+      <FormSection icon={FileText} title="Product Details" subtitle="The essentials buyers will see first">
+        <div className="space-y-5">
+          {/* Title */}
+          <div>
+            <Label htmlFor="title">Product Title</Label>
+            <Input
+              id="title"
+              name="title"
+              type="text"
+              placeholder="Enter product title"
+              defaultValue={initialData?.title}
+              required
+              className="w-full mt-1.5"
+            />
+          </div>
 
-      {/* Category */}
-      <div>
-        <Label htmlFor="category">Product Category</Label>
-        <Select value={category} onValueChange={(value) => {
-          setCategory(value);
-          setSubcategory("");
-          setPropertyType("");
-        }} disabled={isSubmitting}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select a category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="RealEstate">🏠 Real Estate</SelectItem>
-            <SelectItem value="Vehicles">🚗 Vehicles</SelectItem>
-            <SelectItem value="Food">🍽️ Food & Dining</SelectItem>
-            <SelectItem value="Industry">🏭 Industry</SelectItem>
-            <SelectItem value="OtherProducts">📦 Other Products</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-sm text-gray-500 mt-2">
-          Select category that best describes your product or service
-        </p>
-        <input type="hidden" name="category" value={category} />
-      </div>
+          {/* Description */}
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              name="description"
+              placeholder="Describe your product..."
+              defaultValue={initialData?.description}
+              required
+              rows={4}
+              className="w-full resize-none mt-1.5"
+            />
+          </div>
 
-      {/* Subcategory — Real Estate */}
-      {category === "RealEstate" && (
-        <div>
-          <Label htmlFor="subcategory">Property Intent</Label>
-          <Select value={subcategory} onValueChange={(v) => { setSubcategory(v); setPropertyType(""); }} disabled={isSubmitting}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="For Rent or For Sale?" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="for-rent">🔑 For Rent</SelectItem>
-              <SelectItem value="for-sale">🏷️ For Sale</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-gray-500 mt-1">Is this property for rent or for sale?</p>
-          <input type="hidden" name="subcategory" value={subcategory} />
+          {/* Category */}
+          <div>
+            <Label htmlFor="category">Product Category</Label>
+            <Select value={category} onValueChange={(value) => {
+              setCategory(value);
+              setSubcategory("");
+              setPropertyType("");
+            }} disabled={isSubmitting}>
+              <SelectTrigger className="w-full mt-1.5">
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="RealEstate">🏠 Real Estate</SelectItem>
+                <SelectItem value="Vehicles">🚗 Vehicles</SelectItem>
+                <SelectItem value="Food">🍽️ Food & Dining</SelectItem>
+                <SelectItem value="Industry">🏭 Industry</SelectItem>
+                <SelectItem value="OtherProducts">📦 Other Products</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-gray-500 mt-2">
+              Select category that best describes your product or service
+            </p>
+            <input type="hidden" name="category" value={category} />
+          </div>
+
+          {/* Subcategory — Real Estate */}
+          {category === "RealEstate" && (
+            <div>
+              <Label htmlFor="subcategory">Property Intent</Label>
+              <Select value={subcategory} onValueChange={(v) => { setSubcategory(v); setPropertyType(""); }} disabled={isSubmitting}>
+                <SelectTrigger className="w-full mt-1.5">
+                  <SelectValue placeholder="For Rent or For Sale?" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="for-rent">🔑 For Rent</SelectItem>
+                  <SelectItem value="for-sale">🏷️ For Sale</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500 mt-1">Is this property for rent or for sale?</p>
+              <input type="hidden" name="subcategory" value={subcategory} />
+            </div>
+          )}
+
+          {/* Property Type — For Rent */}
+          {category === "RealEstate" && subcategory === "for-rent" && (
+            <div>
+              <Label htmlFor="propertyType">Property Type</Label>
+              <Select value={propertyType} onValueChange={setPropertyType} disabled={isSubmitting}>
+                <SelectTrigger className="w-full mt-1.5">
+                  <SelectValue placeholder="Select property type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="apartment">🏢 Apartment</SelectItem>
+                  <SelectItem value="working-space">💼 Working Space</SelectItem>
+                  <SelectItem value="home-less-than-3">🏠 Home (&lt; 3 chambers, especially students)</SelectItem>
+                  <SelectItem value="home-greater-than-3">🏠 Home (&gt; 3 chambers)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500 mt-1">What type of property is available for rent?</p>
+              <input type="hidden" name="propertyType" value={propertyType} />
+            </div>
+          )}
+
+          {/* Property Type — For Sale */}
+          {category === "RealEstate" && subcategory === "for-sale" && (
+            <div>
+              <Label htmlFor="propertyType">Property Type</Label>
+              <Select value={propertyType} onValueChange={setPropertyType} disabled={isSubmitting}>
+                <SelectTrigger className="w-full mt-1.5">
+                  <SelectValue placeholder="Select property type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="house-for-sale">🏡 House for Sale</SelectItem>
+                  <SelectItem value="land-for-building">🏗️ Land for Building (IBIBANZA)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500 mt-1">What type of property is for sale?</p>
+              <input type="hidden" name="propertyType" value={propertyType} />
+            </div>
+          )}
+
+          {/* Subcategory — Vehicles */}
+          {category === "Vehicles" && (
+            <div>
+              <Label htmlFor="subcategory">Vehicle Intent</Label>
+              <Select value={subcategory} onValueChange={(v) => { setSubcategory(v); setPropertyType(""); }} disabled={isSubmitting}>
+                <SelectTrigger className="w-full mt-1.5">
+                  <SelectValue placeholder="For Rent or For Sale?" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="for-rent">🔑 For Rent</SelectItem>
+                  <SelectItem value="for-sale">🏷️ For Sale</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500 mt-1">Is this vehicle for rent or for sale?</p>
+              <input type="hidden" name="subcategory" value={subcategory} />
+            </div>
+          )}
+
+          {/* Vehicle Type */}
+          {category === "Vehicles" && subcategory && (
+            <div>
+              <Label htmlFor="propertyType">Vehicle Type</Label>
+              <Select value={propertyType} onValueChange={setPropertyType} disabled={isSubmitting}>
+                <SelectTrigger className="w-full mt-1.5">
+                  <SelectValue placeholder="Select vehicle type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(vehicleTypes).map(([key, value]) => (
+                    <SelectItem key={key} value={key}>{value}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500 mt-1">Select the specific vehicle type</p>
+              <input type="hidden" name="propertyType" value={propertyType} />
+            </div>
+          )}
+
+          {/* Subcategory — Food */}
+          {category === "Food" && (
+            <div>
+              <Label htmlFor="subcategory">Food Type</Label>
+              <Select value={subcategory} onValueChange={setSubcategory} disabled={isSubmitting}>
+                <SelectTrigger className="w-full mt-1.5">
+                  <SelectValue placeholder="Select food type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(foodSubcategories).map(([key, value]) => (
+                    <SelectItem key={key} value={key}>{value}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500 mt-1">Select the specific food category</p>
+              <input type="hidden" name="subcategory" value={subcategory} />
+            </div>
+          )}
+
+          {/* Subcategory — Industry */}
+          {category === "Industry" && (
+            <div>
+              <Label htmlFor="subcategory">Industry Type</Label>
+              <Select value={subcategory} onValueChange={setSubcategory} disabled={isSubmitting}>
+                <SelectTrigger className="w-full mt-1.5">
+                  <SelectValue placeholder="Select industry type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(industrySubcategories).map(([key, value]) => (
+                    <SelectItem key={key} value={key}>{value}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500 mt-1">Select whether this is a raw material or finished product</p>
+              <input type="hidden" name="subcategory" value={subcategory} />
+            </div>
+          )}
+
+          {/* Subcategory — Other Products */}
+          {category === "OtherProducts" && (
+            <div>
+              <Label htmlFor="subcategory">Product Type</Label>
+              <Select value={subcategory} onValueChange={setSubcategory} disabled={isSubmitting}>
+                <SelectTrigger className="w-full mt-1.5">
+                  <SelectValue placeholder="Select product type (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(otherProductsSubcategories).map(([key, value]) => (
+                    <SelectItem key={key} value={key}>{value}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500 mt-1">Select Supermarket if this is a supermarket product</p>
+              <input type="hidden" name="subcategory" value={subcategory} />
+            </div>
+          )}
+
+          {/* Price */}
+          <div>
+            <Label htmlFor="price" className="flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-[#0097A7]" /> Price <span className="font-normal text-gray-400">(optional)</span>
+            </Label>
+            <div className="relative mt-1.5">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400 pointer-events-none">Frw</span>
+              <Input
+                id="price"
+                name="price"
+                type="number"
+                step="0.01"
+                min="0"
+                defaultValue={initialData?.price ?? defaultPrice}
+                placeholder="0.00"
+                className="w-full pl-12"
+              />
+            </div>
+          </div>
         </div>
-      )}
+      </FormSection>
 
-      {/* Property Type — For Rent */}
-      {category === "RealEstate" && subcategory === "for-rent" && (
-        <div>
-          <Label htmlFor="propertyType">Property Type</Label>
-          <Select value={propertyType} onValueChange={setPropertyType} disabled={isSubmitting}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select property type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="apartment">🏢 Apartment</SelectItem>
-              <SelectItem value="working-space">💼 Working Space</SelectItem>
-              <SelectItem value="home-less-than-3">🏠 Home (&lt; 3 chambers, especially students)</SelectItem>
-              <SelectItem value="home-greater-than-3">🏠 Home (&gt; 3 chambers)</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-gray-500 mt-1">What type of property is available for rent?</p>
-          <input type="hidden" name="propertyType" value={propertyType} />
-        </div>
-      )}
-
-      {/* Property Type — For Sale */}
-      {category === "RealEstate" && subcategory === "for-sale" && (
-        <div>
-          <Label htmlFor="propertyType">Property Type</Label>
-          <Select value={propertyType} onValueChange={setPropertyType} disabled={isSubmitting}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select property type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="house-for-sale">🏡 House for Sale</SelectItem>
-              <SelectItem value="land-for-building">🏗️ Land for Building (IBIBANZA)</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-gray-500 mt-1">What type of property is for sale?</p>
-          <input type="hidden" name="propertyType" value={propertyType} />
-        </div>
-      )}
-
-      {/* Subcategory — Vehicles */}
-      {category === "Vehicles" && (
-        <div>
-          <Label htmlFor="subcategory">Vehicle Intent</Label>
-          <Select value={subcategory} onValueChange={(v) => { setSubcategory(v); setPropertyType(""); }} disabled={isSubmitting}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="For Rent or For Sale?" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="for-rent">🔑 For Rent</SelectItem>
-              <SelectItem value="for-sale">🏷️ For Sale</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-gray-500 mt-1">Is this vehicle for rent or for sale?</p>
-          <input type="hidden" name="subcategory" value={subcategory} />
-        </div>
-      )}
-
-      {/* Vehicle Type */}
-      {category === "Vehicles" && subcategory && (
-        <div>
-          <Label htmlFor="propertyType">Vehicle Type</Label>
-          <Select value={propertyType} onValueChange={setPropertyType} disabled={isSubmitting}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select vehicle type" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(vehicleTypes).map(([key, value]) => (
-                <SelectItem key={key} value={key}>{value}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-gray-500 mt-1">Select the specific vehicle type</p>
-          <input type="hidden" name="propertyType" value={propertyType} />
-        </div>
-      )}
-
-      {/* Subcategory — Food */}
-      {category === "Food" && (
-        <div>
-          <Label htmlFor="subcategory">Food Type</Label>
-          <Select value={subcategory} onValueChange={setSubcategory} disabled={isSubmitting}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select food type" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(foodSubcategories).map(([key, value]) => (
-                <SelectItem key={key} value={key}>{value}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-gray-500 mt-1">Select the specific food category</p>
-          <input type="hidden" name="subcategory" value={subcategory} />
-        </div>
-      )}
-
-      {/* Subcategory — Industry */}
-      {category === "Industry" && (
-        <div>
-          <Label htmlFor="subcategory">Industry Type</Label>
-          <Select value={subcategory} onValueChange={setSubcategory} disabled={isSubmitting}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select industry type" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(industrySubcategories).map(([key, value]) => (
-                <SelectItem key={key} value={key}>{value}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-gray-500 mt-1">Select whether this is a raw material or finished product</p>
-          <input type="hidden" name="subcategory" value={subcategory} />
-        </div>
-      )}
-
-      {/* Subcategory — Other Products */}
-      {category === "OtherProducts" && (
-        <div>
-          <Label htmlFor="subcategory">Product Type</Label>
-          <Select value={subcategory} onValueChange={setSubcategory} disabled={isSubmitting}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select product type (optional)" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(otherProductsSubcategories).map(([key, value]) => (
-                <SelectItem key={key} value={key}>{value}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-gray-500 mt-1">Select Supermarket if this is a supermarket product</p>
-          <input type="hidden" name="subcategory" value={subcategory} />
-        </div>
-      )}
-
-      {/* Price */}
-      <div>
-        <Label htmlFor="price">Price (Optional)</Label>
-        <Input
-          id="price"
-          name="price"
-          type="number"
-          step="0.01"
-          min="0"
-          defaultValue={initialData?.price ?? defaultPrice}
-          placeholder="Enter product price"
-          className="w-full"
-        />
-      </div>
-
-      {/* Images Upload */}
-      <div>
-        <Label>Product Images (up to 2)</Label>
+      {/* ── Images ───────────────────────────────────────────────── */}
+      <FormSection icon={ImageIcon} title="Product Images" subtitle="Clear photos help your listing sell faster">
         <div className="space-y-4">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+          <div
+            onClick={() => !isSubmitting && fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            className={`relative cursor-pointer rounded-2xl border-2 border-dashed p-8 text-center transition-all ${
+              isDragging
+                ? "border-[#0097A7] bg-cyan-50"
+                : "border-gray-300 bg-gray-50/60 hover:border-[#0097A7] hover:bg-cyan-50/50"
+            } ${isSubmitting ? "opacity-60 pointer-events-none" : ""}`}
+          >
             <input
               ref={fileInputRef}
               type="file"
@@ -455,16 +511,13 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
               onChange={handleImageUpload}
               className="hidden"
             />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center space-x-2 text-[#F17105] hover:text-[#F17105]/90 font-semibold"
-              disabled={isSubmitting}
-            >
-              <Upload className="h-4 w-4" />
-              Click to upload images
-            </button>
-            <p className="text-sm text-gray-500 mt-2">PNG, JPG, GIF up to 5MB each</p>
+            <div className="mx-auto w-14 h-14 rounded-full bg-gradient-to-br from-[#023E4A] to-[#0097A7] flex items-center justify-center mb-3 shadow-sm">
+              <Upload className="h-6 w-6 text-white" />
+            </div>
+            <p className="text-sm font-semibold text-gray-700">
+              <span className="text-[#0097A7]">Click to upload</span> or drag &amp; drop
+            </p>
+            <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF or WebP — up to 5MB each</p>
           </div>
 
           {/* Image Previews */}
@@ -472,195 +525,163 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
             <div className="grid grid-cols-2 gap-4">
               {previewImages.map((image, index) => (
                 <div key={index} className="relative group">
-                  <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200">
+                  <div className={`relative w-full h-36 rounded-xl overflow-hidden border-2 transition-colors ${
+                    mainImageIndex === index ? "border-[#0097A7]" : "border-gray-200"
+                  }`}>
                     <img
                       src={image}
                       alt={`Product image ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
                     {mainImageIndex === index && (
-                      <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                        Main
+                      <div className="absolute top-2 left-2 bg-[#0097A7] text-white text-xs font-semibold px-2 py-1 rounded-full shadow">
+                        ★ Main
                       </div>
                     )}
-                  </div>
-                  <div className="flex justify-between mt-2">
-                    <Button
+                    <button
                       type="button"
-                      variant={mainImageIndex === index ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setAsMainImage(index)}
-                      disabled={isSubmitting}
-                    >
-                      {mainImageIndex === index ? "Main Image" : "Set as Main"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
                       onClick={() => removeImage(index)}
                       disabled={isSubmitting}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all"
+                      title="Remove image"
                     >
                       <X className="h-4 w-4" />
-                    </Button>
+                    </button>
                   </div>
+                  <Button
+                    type="button"
+                    variant={mainImageIndex === index ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setAsMainImage(index)}
+                    disabled={isSubmitting}
+                    className="w-full mt-2"
+                  >
+                    {mainImageIndex === index ? "Main Image" : "Set as Main"}
+                  </Button>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </div>
+      </FormSection>
 
-      {/* Location */}
-      <div>
-        <Label>Product Location (Optional), 📍Click On "Use My Location" Button below to locate your product on Google Maps.</Label>
-        <div className="grid grid-cols-2 gap-4">
+      {/* ── Location ─────────────────────────────────────────────── */}
+      <FormSection icon={MapPin} title="Location" subtitle="Optional — help buyers find your product">
+        <div className="space-y-5">
           <div>
-            <Label htmlFor="latitude">🗺️</Label>
-            <Input
-              id="latitude"
-              name="latitude"
-              type="number"
-              step="any"
-              defaultValue={initialData?.latitude}
-              placeholder="e.g., 40.7128"
-              className="w-full"
-            />
+            <p className="text-sm text-gray-600 mb-3">
+              📍 Click <span className="font-medium">“Use My Location”</span> to pin your product on Google Maps, or enter coordinates manually.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="latitude">🗺️ Latitude</Label>
+                <Input
+                  id="latitude"
+                  name="latitude"
+                  type="number"
+                  step="any"
+                  defaultValue={initialData?.latitude}
+                  placeholder="e.g., 40.7128"
+                  className="w-full mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="longitude">🗺️ Longitude</Label>
+                <Input
+                  id="longitude"
+                  name="longitude"
+                  type="number"
+                  step="any"
+                  defaultValue={initialData?.longitude}
+                  placeholder="e.g., -74.0060"
+                  className="w-full mt-1.5"
+                />
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleLocationClick}
+              className="w-full mt-3 border-[#0097A7]/40 text-[#023E4A] hover:bg-cyan-50"
+              disabled={isSubmitting}
+            >
+              <Navigation className="h-4 w-4 mr-2" />
+              Use My Location
+            </Button>
           </div>
-          <div>
-            <Label htmlFor="longitude">🗺️</Label>
-            <Input
-              id="longitude"
-              name="longitude"
-              type="number"
-              step="any"
-              defaultValue={initialData?.longitude}
-              placeholder="e.g., -74.0060"
-              className="w-full"
-            />
+
+          <div className="border-t border-gray-200 pt-5">
+            <p className="text-sm font-medium text-gray-700 mb-1">Location Details</p>
+            <p className="text-sm text-gray-500 mb-4">Enter the administrative location where your product is located</p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="province">Province</Label>
+                <Input id="province" name="province" type="text" defaultValue={initialData?.province} placeholder="e.g., Kigali City" className="w-full mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="district">District</Label>
+                <Input id="district" name="district" type="text" defaultValue={initialData?.district} placeholder="e.g., Nyarugenge" className="w-full mt-1.5" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <Label htmlFor="sector">Sector</Label>
+                <Input id="sector" name="sector" type="text" defaultValue={initialData?.sector} placeholder="e.g., Kimihurura" className="w-full mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="village">Village</Label>
+                <Input id="village" name="village" type="text" defaultValue={initialData?.village} placeholder="e.g., Kacyiru" className="w-full mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="zone">Zone/Place</Label>
+                <Input id="zone" name="zone" type="text" defaultValue={initialData?.zone} placeholder="e.g., Zone 1 or Specific Place" className="w-full mt-1.5" />
+              </div>
+            </div>
           </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleLocationClick}
-          className="w-full mt-2"
-          disabled={isSubmitting}
-        >
-          <MapPin className="h-4 w-4 mr-2" />
-          Use My Location
-        </Button>
-      </div>
+      </FormSection>
 
-      {/* Location Details Section */}
-      <div>
-        <Label>Product Location Details (Optional)</Label>
-        <p className="text-sm text-gray-600 mb-4">Enter the location details where your product is located</p>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="province">Province</Label>
-            <Input
-              id="province"
-              name="province"
-              type="text"
-              defaultValue={initialData?.province}
-              placeholder="e.g., Kigali City"
-              className="w-full"
-            />
-          </div>
-          <div>
-            <Label htmlFor="district">District</Label>
-            <Input
-              id="district"
-              name="district"
-              type="text"
-              defaultValue={initialData?.district}
-              placeholder="e.g., Nyarugenge"
-              className="w-full"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div>
-            <Label htmlFor="sector">Sector</Label>
-            <Input
-              id="sector"
-              name="sector"
-              type="text"
-              defaultValue={initialData?.sector}
-              placeholder="e.g., Kimihurura"
-              className="w-full"
-            />
-          </div>
-          <div>
-            <Label htmlFor="village">Village</Label>
-            <Input
-              id="village"
-              name="village"
-              type="text"
-              defaultValue={initialData?.village}
-              placeholder="e.g., Kacyiru"
-              className="w-full"
-            />
-          </div>
-          <div>
-            <Label htmlFor="zone">Zone/Place</Label>
-            <Input
-              id="zone"
-              name="zone"
-              type="text"
-              defaultValue={initialData?.zone}
-              placeholder="e.g., Zone 1 or Specific Place"
-              className="w-full"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Availability Section */}
-      <div>
-        <Label>Product Availability</Label>
-        <div className="space-y-3 mt-2">
-          <div className="flex items-center space-x-3">
+      {/* ── Availability ─────────────────────────────────────────── */}
+      <FormSection icon={PackageCheck} title="Availability" subtitle="Control whether buyers can purchase this now">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label
+            htmlFor="available"
+            className={`flex items-center gap-3 rounded-xl border p-4 cursor-pointer transition-colors ${
+              isAvailable ? "border-green-300 bg-green-50" : "border-gray-200 bg-white hover:border-gray-300"
+            }`}
+          >
             <Checkbox
               id="available"
               checked={isAvailable}
               onCheckedChange={(checked: boolean) => setIsAvailable(checked)}
               disabled={isSubmitting}
             />
-            <Label htmlFor="available" className="text-sm font-normal">
-              Available for viewing/purchase
-            </Label>
-          </div>
-          <div className="flex items-center space-x-3">
+            <span className="text-sm font-medium text-gray-700">Available for viewing/purchase</span>
+          </label>
+          <label
+            htmlFor="unavailable"
+            className={`flex items-center gap-3 rounded-xl border p-4 cursor-pointer transition-colors ${
+              !isAvailable ? "border-red-300 bg-red-50" : "border-gray-200 bg-white hover:border-gray-300"
+            }`}
+          >
             <Checkbox
               id="unavailable"
               checked={!isAvailable}
               onCheckedChange={(checked: boolean) => setIsAvailable(!checked)}
               disabled={isSubmitting}
             />
-            <Label htmlFor="unavailable" className="text-sm font-normal">
-              Unavailable/Booked
-            </Label>
-          </div>
+            <span className="text-sm font-medium text-gray-700">Unavailable/Booked</span>
+          </label>
         </div>
-        <p className="text-sm text-gray-500 mt-2">
-          Select whether this product should be available for visitors to view and purchase, or marked as unavailable/booked.
-        </p>
         {/* Hidden input for availability */}
-        <input
-          type="hidden"
-          name="available"
-          value={isAvailable ? "true" : "false"}
-        />
-      </div>
+        <input type="hidden" name="available" value={isAvailable ? "true" : "false"} />
+      </FormSection>
 
-      {/* Contact Information Section */}
-      <div>
-        <Label>Contact Number or WhatsApp Number</Label>
-        <div className="space-y-3 mt-2">
+      {/* ── Contact Information ──────────────────────────────────── */}
+      <FormSection icon={Phone} title="Contact Information" subtitle="How customers can reach you about this product">
+        <div className="space-y-3">
           <div className="flex items-center space-x-3">
             <Checkbox
               id="contactMethod"
@@ -684,10 +705,10 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
                 id="contactNumber"
                 name="contactNumber"
                 type="tel"
-                placeholder="Enter phone number (e.g., +250788123456)"
+                placeholder="e.g., +250788123456"
                 value={contactNumber}
                 onChange={(e) => setContactNumber(e.target.value)}
-                className="w-full"
+                className="w-full mt-1.5"
                 disabled={isSubmitting}
               />
             </div>
@@ -697,97 +718,87 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
                 id="whatsappNumber"
                 name="whatsappNumber"
                 type="tel"
-                placeholder="Enter WhatsApp number (e.g., +250788123456)"
+                placeholder="e.g., +250788123456"
                 value={whatsappNumber}
                 onChange={(e) => setWhatsappNumber(e.target.value)}
-                className="w-full"
+                className="w-full mt-1.5"
                 disabled={isSubmitting}
               />
             </div>
           </div>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm text-gray-500">
             Provide either a contact number or WhatsApp number (or both) so customers can reach you about this product.
           </p>
         </div>
-      </div>
+      </FormSection>
 
-      {/* Owner Information Section (For Real Estate & Vehicles) */}
+      {/* ── Owner Information (Real Estate & Vehicles) ───────────── */}
       {(category === "RealEstate" || category === "Vehicles") && (
-        <div className="bg-blue-50/50 p-6 rounded-xl border border-blue-100 space-y-4">
-          <div className="flex items-center gap-2">
-            <Building className="w-5 h-5 text-blue-600" />
-            <Label className="text-lg font-bold text-blue-800">
-              Owner Information (For {category === "Vehicles" ? "Vehicle" : "Lease"} Agreement)
-            </Label>
+        <section className="rounded-2xl border border-blue-200 bg-gradient-to-b from-blue-50 to-white p-5 sm:p-6 shadow-sm space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shrink-0 shadow-sm">
+              <Building className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-bold text-blue-900 leading-tight">
+                Owner Information (For {category === "Vehicles" ? "Vehicle" : "Lease"} Agreement)
+              </h3>
+              <p className="text-xs text-blue-600 mt-0.5">
+                Shown to clients via “Owner Info” to help them fill the{" "}
+                {category === "Vehicles" ? "booking/purchase" : "lease"} contract.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-blue-600">
-            This information will be shown to clients when they click "Owner Info" to help them fill the{" "}
-            {category === "Vehicles" ? "booking/purchase" : "lease"} contract.
-          </p>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="ownerFullName">Owner Full Name</Label>
-              <Input
-                id="ownerFullName"
-                name="ownerFullName"
-                value={ownerFullName}
-                onChange={(e) => setOwnerFullName(e.target.value)}
-                placeholder="Full legal name of the owner"
-                className="bg-white"
-              />
+              <Input id="ownerFullName" name="ownerFullName" value={ownerFullName} onChange={(e) => setOwnerFullName(e.target.value)} placeholder="Full legal name of the owner" className="bg-white" />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="ownerNationality">Owner Nationality</Label>
-              <Input
-                id="ownerNationality"
-                name="ownerNationality"
-                value={ownerNationality}
-                onChange={(e) => setOwnerNationality(e.target.value)}
-                placeholder="e.g., Rwandan"
-                className="bg-white"
-              />
+              <Input id="ownerNationality" name="ownerNationality" value={ownerNationality} onChange={(e) => setOwnerNationality(e.target.value)} placeholder="e.g., Rwandan" className="bg-white" />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="ownerID">Owner National ID / Passport No</Label>
-              <Input
-                id="ownerID"
-                name="ownerID"
-                value={ownerID}
-                onChange={(e) => setOwnerID(e.target.value)}
-                placeholder="ID number"
-                className="bg-white"
-              />
+              <Input id="ownerID" name="ownerID" value={ownerID} onChange={(e) => setOwnerID(e.target.value)} placeholder="ID number" className="bg-white" />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="ownerAddress">Owner Current Address</Label>
-              <Input
-                id="ownerAddress"
-                name="ownerAddress"
-                value={ownerAddress}
-                onChange={(e) => setOwnerAddress(e.target.value)}
-                placeholder="Owner's current physical address"
-                className="bg-white"
-              />
+              <Input id="ownerAddress" name="ownerAddress" value={ownerAddress} onChange={(e) => setOwnerAddress(e.target.value)} placeholder="Owner's current physical address" className="bg-white" />
             </div>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Submit Button */}
-      <div className="flex gap-4">
+      {/* ── Submit ───────────────────────────────────────────────── */}
+      <div className="flex gap-3 pt-1">
         <Button
           type="submit"
-          className={`flex-1 ${isEditMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'} text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`flex-1 text-white font-semibold py-3 rounded-xl shadow-sm transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
+            isEditMode
+              ? "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
+              : "bg-gradient-to-r from-[#023E4A] to-[#0097A7] hover:from-[#012830] hover:to-[#007e8c]"
+          }`}
           disabled={isSubmitting}
         >
-          {isSubmitting ? (isEditMode ? "Updating..." : "Uploading...") : (isEditMode ? "Update Product" : "Upload Product")}
+          {isSubmitting ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              {isEditMode ? "Updating..." : "Uploading..."}
+            </span>
+          ) : (
+            <span className="flex items-center justify-center gap-2">
+              {isEditMode ? <CheckCircle2 className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+              {isEditMode ? "Update Product" : "Upload Product"}
+            </span>
+          )}
         </Button>
         {isEditMode && (
           <Button
             type="button"
             variant="outline"
-            className="px-6"
+            className="px-6 rounded-xl"
             onClick={onCancel}
             disabled={isSubmitting}
           >
@@ -798,21 +809,19 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
 
       {/* Success Message */}
       {success && (
-        <div className="p-4 rounded-lg bg-green-50 border border-green-200 text-green-700 flex items-center">
-          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-          </svg>
+        <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-green-700 flex items-center">
+          <CheckCircle2 className="w-5 h-5 mr-2 shrink-0" />
           {success}
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="p-4 rounded-lg bg-red-50 text-red-700">
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">
+          <X className="w-5 h-5 shrink-0" />
           {error}
         </div>
       )}
     </form>
-    </div>
   );
 }

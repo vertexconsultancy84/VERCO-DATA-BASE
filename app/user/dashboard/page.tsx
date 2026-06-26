@@ -196,17 +196,17 @@ export default function UserDashboard() {
       <Header />
 
       {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <div className={`relative overflow-hidden bg-gradient-to-r ${meta.color} text-white pt-24`}>
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#023E4A] to-[#0097A7] text-white">
         <div className="absolute inset-0 bg-black/10" />
-        <div className="relative max-w-7xl mx-auto px-4 py-14 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center flex-shrink-0">
-              <CategoryIcon className="w-8 h-8 text-white" />
+        <div className="relative max-w-7xl mx-auto px-4 pt-24 pb-8 sm:px-6 sm:pt-28 sm:pb-10 lg:px-8">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className={`w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br ${meta.color} ring-1 ring-white/25 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm`}>
+              <CategoryIcon className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
             </div>
-            <div>
-              <p className="text-white/70 text-sm font-medium uppercase tracking-wide">{meta.label} Dashboard</p>
-              <h1 className="text-3xl font-bold">Welcome back, {user.name}!</h1>
-              <p className="mt-1 text-white/80">{meta.description}</p>
+            <div className="min-w-0">
+              <p className="text-white/70 text-xs sm:text-sm font-medium uppercase tracking-wide">{meta.label} Dashboard</p>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">Welcome back, {user.name}!</h1>
+              <p className="mt-0.5 text-sm text-white/80 hidden sm:block">{meta.description}</p>
             </div>
           </div>
         </div>
@@ -358,7 +358,7 @@ export default function UserDashboard() {
                           </span>
                           {product.price != null && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                              ${product.price.toFixed(2)}
+                              Frw {product.price.toFixed(2)}
                             </span>
                           )}
                         </div>

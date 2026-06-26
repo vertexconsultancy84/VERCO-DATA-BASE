@@ -7,8 +7,9 @@ import {
   saveIndustryCalculation,
   saveIndustryStock,
   getMyIndustryStock,
+  getRawMaterialStockItems,
 } from "@/app/actions/industry";
-import type { StockItemData } from "@/app/actions/industry";
+import type { StockItemData, RawMaterialStockItem } from "@/app/actions/industry";
 
 interface FeedItem {
   id: string;
@@ -42,6 +43,10 @@ export default function IndustryPriceCalculator({
   const [pricePerUnit, setPricePerUnit] = useState(0);
   const [totalTaxes, setTotalTaxes] = useState(0);
   const [commission, setCommission] = useState(0);
+
+  // ── Raw materials available in stock (from Stock of Materials) ──
+  const [stockMaterials, setStockMaterials] = useState<RawMaterialStockItem[]>([]);
+  const [selectedMaterialId, setSelectedMaterialId] = useState("");
 
   // ── Extra manual feeds ─────────────────────────────────────────
   const [extraFeeds, setExtraFeeds] = useState<FeedItem[]>([]);
@@ -106,6 +111,24 @@ export default function IndustryPriceCalculator({
       );
     });
   }, []);
+
+  // ── Load raw materials from the Stock of Materials list ────────
+  useEffect(() => {
+    getRawMaterialStockItems().then(setStockMaterials);
+  }, []);
+
+  // ── Picking a material from stock fills its name + price/unit ──
+  const selectedMaterial = stockMaterials.find((m) => m.id === selectedMaterialId);
+  const handleSelectMaterial = (id: string) => {
+    setSelectedMaterialId(id);
+    const item = stockMaterials.find((m) => m.id === id);
+    if (!item) {
+      setRawMaterialName("");
+      return;
+    }
+    setRawMaterialName(item.materialName);
+    setPricePerUnit(item.amount);
+  };
 
   // ── Derived values ─────────────────────────────────────────────
   const autoFeedPrice = feedQuantity * pricePerUnit;
@@ -419,8 +442,37 @@ export default function IndustryPriceCalculator({
               <div className="px-4 py-2 font-bold text-purple-900 text-sm">Processed Details</div>
               <div className="px-4 py-2 text-gray-500 text-sm">Insert your data</div>
             </div>
+            {/* Raw material — chosen from the Stock of Materials list */}
+            <div className="grid grid-cols-2 border-t border-gray-100 items-center">
+              <span className="px-4 py-2 text-sm text-gray-600">Raw material&apos;s Name</span>
+              <select
+                className="px-3 py-2 text-sm border-l border-gray-100 outline-none w-full focus:bg-blue-50 bg-white"
+                value={selectedMaterialId}
+                onChange={(e) => handleSelectMaterial(e.target.value)}
+                disabled={stockMaterials.length === 0}
+              >
+                <option value="">
+                  {stockMaterials.length === 0 ? "No materials in stock" : "— Choose from stock —"}
+                </option>
+                {stockMaterials.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.materialName} — {m.quantityRemaining.toLocaleString()} left @ Frw {m.amount.toLocaleString()}/unit
+                  </option>
+                ))}
+              </select>
+            </div>
+            {selectedMaterial && (
+              <div className="grid grid-cols-2 border-t border-gray-100 bg-emerald-50 items-center">
+                <span className="px-4 py-2 text-xs text-emerald-700">Available in stock</span>
+                <span className="px-3 py-2 text-xs font-semibold text-emerald-800 text-right">
+                  {selectedMaterial.quantityRemaining.toLocaleString()} unit(s)
+                  {feedQuantity > selectedMaterial.quantityRemaining && (
+                    <span className="block text-red-500 font-normal">exceeds available stock</span>
+                  )}
+                </span>
+              </div>
+            )}
             {[
-              { label: "Raw material's Name", type: "text",   value: rawMaterialName, onChange: (v: string) => setRawMaterialName(v),   placeholder: "e.g. sulphonic" },
               { label: "Feed quantity",        type: "number", value: feedQuantity,    onChange: (v: string) => setFeedQuantity(Number(v)),    placeholder: "0" },
               { label: "P/unit (Frw)",         type: "number", value: pricePerUnit,    onChange: (v: string) => setPricePerUnit(Number(v)),    placeholder: "0" },
               { label: "Total taxes",          type: "number", value: totalTaxes,      onChange: (v: string) => setTotalTaxes(Number(v)),      placeholder: "0" },

@@ -11,8 +11,31 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 
+// Corner badge showing how many items are uploaded in a sub-category
+function CountBadge({ count }: { count: number }) {
+  return (
+    <span
+      className={`absolute top-2 right-2 inline-flex items-center justify-center min-w-[1.5rem] h-6 px-1.5 rounded-full text-xs font-bold shadow-sm ${
+        count > 0 ? "bg-[#D4A017] text-[#023E4A]" : "bg-gray-100 text-gray-400"
+      }`}
+    >
+      {count}
+    </span>
+  );
+}
+
+// Small line under the label, e.g. "12 items uploaded" / "No items yet"
+function CountLabel({ count }: { count: number }) {
+  return (
+    <p className="mt-1 text-xs font-medium text-gray-500">
+      {count === 0 ? "No items yet" : `${count} item${count === 1 ? "" : "s"} uploaded`}
+    </p>
+  );
+}
+
 export default function OtherProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
+  const [foodCounts, setFoodCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,6 +61,19 @@ export default function OtherProductsPage() {
       const fetchedProducts = await getAllPublishedProducts();
       const otherProducts = fetchedProducts.filter(product => product.category === 'OtherProducts');
       setProducts(otherProducts);
+
+      // Count how many foods are uploaded in each Food & Dining sub-category
+      const foods = fetchedProducts.filter(product => product.category === 'Food');
+      const countBy = (sub: string) => foods.filter(product => product.subcategory === sub).length;
+      setFoodCounts({
+        restaurant: countBy('restaurant'),
+        grocery: countBy('grocery'),
+        catering: countBy('catering'),
+        'food-delivery': countBy('food-delivery'),
+        bakery: countBy('bakery'),
+        'other-food': countBy('other-food'),
+        supermarket: otherProducts.filter(product => product.subcategory === 'supermarket').length,
+      });
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
@@ -110,41 +146,53 @@ export default function OtherProductsPage() {
           <Utensils className="w-5 h-5 text-[#023E4A]" /> Food & Dining
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <Link href="/food/restaurant" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+          <Link href="/food/restaurant" className="group relative rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <CountBadge count={foodCounts['restaurant'] ?? 0} />
             <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
               <Utensils className="w-5 h-5" />
             </div>
             <p className="font-semibold text-gray-900 text-sm">Restaurant</p>
+            <CountLabel count={foodCounts['restaurant'] ?? 0} />
           </Link>
-          <Link href="/food/grocery" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+          <Link href="/food/grocery" className="group relative rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <CountBadge count={foodCounts['grocery'] ?? 0} />
             <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
               <ShoppingBasket className="w-5 h-5" />
             </div>
             <p className="font-semibold text-gray-900 text-sm">Grocery</p>
+            <CountLabel count={foodCounts['grocery'] ?? 0} />
           </Link>
-          <Link href="/food/catering" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+          <Link href="/food/catering" className="group relative rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <CountBadge count={foodCounts['catering'] ?? 0} />
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
               <ChefHat className="w-5 h-5" />
             </div>
             <p className="font-semibold text-gray-900 text-sm">Catering</p>
+            <CountLabel count={foodCounts['catering'] ?? 0} />
           </Link>
-          <Link href="/food/food-delivery" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+          <Link href="/food/food-delivery" className="group relative rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <CountBadge count={foodCounts['food-delivery'] ?? 0} />
             <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
               <Truck className="w-5 h-5" />
             </div>
             <p className="font-semibold text-gray-900 text-sm">Food Delivery</p>
+            <CountLabel count={foodCounts['food-delivery'] ?? 0} />
           </Link>
-          <Link href="/food/bakery" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+          <Link href="/food/bakery" className="group relative rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <CountBadge count={foodCounts['bakery'] ?? 0} />
             <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
               <Croissant className="w-5 h-5" />
             </div>
             <p className="font-semibold text-gray-900 text-sm">Bakery</p>
+            <CountLabel count={foodCounts['bakery'] ?? 0} />
           </Link>
-          <Link href="/food/other-food" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+          <Link href="/food/other-food" className="group relative rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-[#D4A017]/50 transition-all duration-300">
+            <CountBadge count={foodCounts['other-food'] ?? 0} />
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
               <Coffee className="w-5 h-5" />
             </div>
             <p className="font-semibold text-gray-900 text-sm">Other Food</p>
+            <CountLabel count={foodCounts['other-food'] ?? 0} />
           </Link>
         </div>
       </div>
@@ -155,11 +203,13 @@ export default function OtherProductsPage() {
           <ShoppingCart className="w-5 h-5 text-emerald-600" /> Supermarket
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-2">
-          <Link href="/other-products/supermarket" className="group rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-emerald-300 transition-all duration-300">
+          <Link href="/other-products/supermarket" className="group relative rounded-xl border-2 border-gray-200 bg-white p-5 text-center hover:shadow-lg hover:border-emerald-300 transition-all duration-300">
+            <CountBadge count={foodCounts['supermarket'] ?? 0} />
             <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
               <ShoppingCart className="w-5 h-5" />
             </div>
             <p className="font-semibold text-gray-900 text-sm">Supermarket</p>
+            <CountLabel count={foodCounts['supermarket'] ?? 0} />
           </Link>
         </div>
       </div>

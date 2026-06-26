@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Plus, Trash2, AlertCircle, Pencil, X, Receipt, Search,
-  Building2, User as UserIcon, Wallet,
+  Building2, User as UserIcon, Wallet, Download,
 } from "lucide-react";
 import {
   getServiceTransactions,
@@ -57,6 +57,7 @@ export default function ServiceTransactions() {
   const [editForm, setEditForm] = useState<FormState>(DEFAULTS);
   const [editSaving, setEditSaving] = useState(false);
   const [query, setQuery] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     getServiceTransactions().then((r) => { setRecords(r); setLoading(false); });
@@ -140,6 +141,130 @@ export default function ServiceTransactions() {
     if (!confirm("Delete this transaction record?")) return;
     await deleteServiceTransaction(id);
     setRecords((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const downloadReport = async () => {
+    if (!filtered.length) return;
+    setDownloading(true);
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+      const PW = 297, PH = 210, M = 10;
+      const usableW = PW - 2 * M;
+      const ROW_H = 8;
+      const navy: [number, number, number] = [2, 62, 74];
+      const white: [number, number, number] = [255, 255, 255];
+      const light: [number, number, number] = [236, 254, 255];
+
+      const trunc = (s: string | null | undefined, max: number) => {
+        const str = s ?? "—";
+        return str.length > max ? str.slice(0, max - 1) + "…" : str || "—";
+      };
+
+      const cols: { header: string; width: number }[] = [
+        { header: "#",               width: 8  },
+        { header: "Date",            width: 24 },
+        { header: "Giver (Company)", width: 42 },
+        { header: "Receiver",        width: 38 },
+        { header: "Email",           width: 46 },
+        { header: "Telephone",       width: 28 },
+        { header: "ID",              width: 26 },
+        { header: "Service",         width: 35 },
+        { header: "Amount Paid",     width: 30 },
+      ];
+
+      const drawHeader = (y: number) => {
+        pdf.setFillColor(...navy);
+        pdf.rect(M, y, usableW, ROW_H, "F");
+        pdf.setTextColor(...white);
+        pdf.setFontSize(7);
+        pdf.setFont("helvetica", "bold");
+        let x = M + 1.5;
+        cols.forEach(c => { pdf.text(c.header, x, y + ROW_H - 2); x += c.width; });
+      };
+
+      // Page header
+      pdf.setFillColor(...navy);
+      pdf.rect(0, 0, PW, 18, "F");
+      pdf.setTextColor(...white);
+      pdf.setFontSize(13);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Service Transactions Report", M, 12);
+      pdf.setFontSize(7.5);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(
+        `${filtered.length} record${filtered.length !== 1 ? "s" : ""}  |  Generated: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+        PW - M, 12, { align: "right" }
+      );
+
+      let y = 24;
+      drawHeader(y);
+      y += ROW_H;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(6.5);
+
+      filtered.forEach((r, i) => {
+        if (y + ROW_H > PH - 12) {
+          pdf.addPage();
+          y = 10;
+          drawHeader(y);
+          y += ROW_H;
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(6.5);
+        }
+
+        if (i % 2 === 0) {
+          pdf.setFillColor(...light);
+          pdf.rect(M, y, usableW, ROW_H, "F");
+        }
+
+        pdf.setTextColor(20, 20, 20);
+
+        const cells = [
+          String(i + 1),
+          new Date(r.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+          trunc(r.giverCompany, 30),
+          trunc(r.receiverName, 26),
+          trunc(r.receiverEmail, 32),
+          trunc(r.receiverPhone, 18),
+          trunc(r.receiverId, 16),
+          trunc(r.serviceDescription, 24),
+          frw(r.amountPaid),
+        ];
+
+        let x = M + 1.5;
+        cells.forEach((cell, ci) => {
+          pdf.text(cell, x, y + ROW_H - 2);
+          x += cols[ci].width;
+        });
+
+        y += ROW_H;
+      });
+
+      // Totals row
+      if (y + ROW_H > PH - 12) { pdf.addPage(); y = 10; }
+      const total = filtered.reduce((s, r) => s + r.amountPaid, 0);
+      pdf.setFillColor(...navy);
+      pdf.rect(M, y, usableW, ROW_H, "F");
+      pdf.setTextColor(...white);
+      pdf.setFontSize(7.5);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("TOTAL AMOUNT PAID", M + 1.5, y + ROW_H - 2);
+      pdf.text(frw(total), M + usableW - 2, y + ROW_H - 2, { align: "right" });
+      y += ROW_H;
+
+      // Footer
+      pdf.setFontSize(7);
+      pdf.setTextColor(160, 160, 160);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("Vertex Industry Management System", M, PH - 4);
+
+      pdf.save(`service-transactions-${new Date().toISOString().split("T")[0]}.pdf`);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const fieldGrid = (s: FormState, set: (field: keyof FormState, val: string) => void, ring: string) => (
@@ -247,12 +372,21 @@ export default function ServiceTransactions() {
             className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#06B6D4]"
           />
         </div>
-        <button
-          onClick={() => { setShowForm((v) => !v); resetForm(); }}
-          className="flex items-center justify-center gap-1.5 bg-[#023E4A] hover:bg-[#012830] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Record Transaction
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={downloadReport}
+            disabled={downloading || filtered.length === 0}
+            className="flex items-center justify-center gap-1.5 bg-[#1e3a5f] hover:bg-[#16304f] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" /> {downloading ? "Generating…" : "Download PDF"}
+          </button>
+          <button
+            onClick={() => { setShowForm((v) => !v); resetForm(); }}
+            className="flex items-center justify-center gap-1.5 bg-[#023E4A] hover:bg-[#012830] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Record Transaction
+          </button>
+        </div>
       </div>
 
       {/* Add form */}

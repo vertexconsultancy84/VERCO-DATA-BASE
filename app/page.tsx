@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Header from "@/components/Header";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
 import Hero from "@/components/Hero";
@@ -22,6 +22,12 @@ import {
   Factory,
   BoxesIcon,
   Search,
+  UtensilsCrossed,
+  ShoppingBasket,
+  ChefHat,
+  Truck,
+  Croissant,
+  Soup,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -31,6 +37,65 @@ interface SearchPanel {
   categoryLabel: string;
   browseHref: string;
   accentColor: string;
+}
+
+// ── Shared presentational pieces for the "Browse by Category" section ──
+
+function GroupHeader({ icon: Icon, title, accent }: { icon: React.ElementType; title: string; accent: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4">
+      <span className={`w-9 h-9 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center ${accent}`}>
+        <Icon className="w-5 h-5" strokeWidth={2.2} />
+      </span>
+      <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+    </div>
+  );
+}
+
+interface CategoryCardProps {
+  icon: React.ElementType;
+  gradient: string;
+  title: string;
+  desc: string;
+  count: number;
+  unit: string;
+  cta: string;
+  ctaIcon: React.ElementType;
+  accent: string;
+  href?: string;
+  onClick?: () => void;
+}
+
+function CategoryCard({
+  icon: Icon, gradient, title, desc, count, unit, cta, ctaIcon: CtaIcon, accent, href, onClick,
+}: CategoryCardProps) {
+  const cls =
+    "group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 w-full text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-transparent";
+  const inner = (
+    <>
+      <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      <div className="flex flex-col items-center text-center">
+        <div className={`w-12 h-12 bg-gradient-to-br ${gradient} text-white rounded-2xl flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform`}>
+          <Icon className="w-6 h-6" />
+        </div>
+        <h4 className="text-base font-bold text-gray-900 mb-1">{title}</h4>
+        <p className="text-xs text-gray-500 leading-snug min-h-[2rem]">{desc}</p>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <span className="text-[11px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+            {count} {unit}
+          </span>
+          <span className={`text-[11px] ${accent} flex items-center gap-0.5 font-semibold whitespace-nowrap`}>
+            <CtaIcon className="w-3 h-3" /> {cta}
+          </span>
+        </div>
+      </div>
+    </>
+  );
+  return href ? (
+    <Link href={href} className={cls}>{inner}</Link>
+  ) : (
+    <button type="button" onClick={onClick} className={cls}>{inner}</button>
+  );
 }
 
 export default function HomePage() {
@@ -97,6 +162,18 @@ export default function HomePage() {
     };
   };
 
+  // Compute once per products change instead of on every count badge render
+  const cats = useMemo(getProductsByCategory, [products]);
+
+  const foodItems = [
+    { key: "restaurant",    title: "Restaurant",    desc: "Dine-in & local eateries",   href: "/food/restaurant",    icon: UtensilsCrossed, gradient: "from-amber-500 to-orange-600",   accent: "text-orange-600", count: cats.food.restaurant.length },
+    { key: "grocery",       title: "Grocery",       desc: "Fresh produce & essentials", href: "/food/grocery",       icon: ShoppingBasket,  gradient: "from-lime-500 to-green-600",     accent: "text-green-600",  count: cats.food.grocery.length },
+    { key: "catering",      title: "Catering",      desc: "Events & bulk catering",     href: "/food/catering",      icon: ChefHat,         gradient: "from-rose-500 to-pink-600",      accent: "text-rose-600",   count: cats.food.catering.length },
+    { key: "food-delivery", title: "Food Delivery", desc: "Order in, delivered fast",   href: "/food/food-delivery", icon: Truck,           gradient: "from-cyan-500 to-teal-600",      accent: "text-teal-600",   count: cats.food.foodDelivery.length },
+    { key: "bakery",        title: "Bakery",        desc: "Bread, cakes & pastries",    href: "/food/bakery",        icon: Croissant,       gradient: "from-yellow-500 to-amber-600",   accent: "text-amber-600",  count: cats.food.bakery.length },
+    { key: "other-food",    title: "Other Food",    desc: "More tasty options",         href: "/food/other-food",    icon: Soup,            gradient: "from-fuchsia-500 to-purple-600", accent: "text-purple-600", count: cats.food.otherFood.length },
+  ];
+
   return (
     <main className="min-h-screen">
       <AnnouncementBanner />
@@ -114,168 +191,113 @@ export default function HomePage() {
       />
 
       {/* Categories Section */}
-      <section className="pt-2 pb-4 bg-gray-50">
+      <section className="py-14 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Browse by Category
-            </h2>
-            <p className="text-lg text-gray-600 mb-8">
-              Explore products and services by category
+          <div className="text-center mb-10">
+            <span className="inline-block text-xs font-semibold uppercase tracking-wider text-[#0097A7] bg-cyan-50 px-3 py-1 rounded-full mb-3">
+              Marketplace
+            </span>
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">Browse by Category</h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Explore products and services across every category — find the right supplier in seconds.
             </p>
           </div>
 
-          {/* Real Estate & Vehicles Categories — same horizontal row */}
-          <div className="mb-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-2">
-              <h3 className="text-xl font-semibold text-gray-700 flex items-center gap-2">
-                <Home className="w-5 h-5 text-[#023E4A]" /> Real Estate
-              </h3>
-              <h3 className="text-xl font-semibold text-gray-700 flex items-center gap-2">
-                <Car className="w-5 h-5 text-blue-600" /> Vehicles
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-              {/* Real Estate — For Rent */}
-              <button
-                onClick={() => openSearch({ category: "RealEstate", subcategory: "for-rent", categoryLabel: "Real Estate — For Rent", browseHref: "/real-estate/for-rent", accentColor: "orange" })}
-                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50 text-left w-full"
-              >
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-[#023E4A] to-[#0097A7] text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <Home className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-lg font-bold text-gray-900 mb-2">For Rent</h4>
-                  <p className="text-sm text-gray-600">Apartments, Houses & Working Spaces</p>
-                  <div className="mt-4 flex items-center justify-center gap-2">
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                      {getProductsByCategory().realEstate.forRent.length} properties
-                    </span>
-                    <span className="text-xs text-[#023E4A] flex items-center gap-0.5 font-medium">
-                      <Search className="w-3 h-3" /> Find supplier
-                    </span>
-                  </div>
+          <div className="space-y-10">
+            {/* Real Estate & Vehicles — side by side, each header tied to its own cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Real Estate */}
+              <div>
+                <GroupHeader icon={Home} title="Real Estate" accent="text-[#023E4A]" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <CategoryCard
+                    icon={Home} gradient="from-[#023E4A] to-[#0097A7]" accent="text-[#023E4A]"
+                    title="For Rent" desc="Apartments, Houses & Working Spaces"
+                    count={cats.realEstate.forRent.length} unit="properties"
+                    cta="Find supplier" ctaIcon={Search}
+                    onClick={() => openSearch({ category: "RealEstate", subcategory: "for-rent", categoryLabel: "Real Estate — For Rent", browseHref: "/real-estate/for-rent", accentColor: "orange" })}
+                  />
+                  <CategoryCard
+                    icon={Building} gradient="from-emerald-500 to-emerald-600" accent="text-emerald-600"
+                    title="For Sale" desc="Houses & Properties"
+                    count={cats.realEstate.forSale.length} unit="properties"
+                    cta="Find supplier" ctaIcon={Search}
+                    onClick={() => openSearch({ category: "RealEstate", subcategory: "for-sale", categoryLabel: "Real Estate — For Sale", browseHref: "/real-estate/for-sale", accentColor: "emerald" })}
+                  />
                 </div>
-              </button>
-
-              {/* Real Estate — For Sale */}
-              <button
-                onClick={() => openSearch({ category: "RealEstate", subcategory: "for-sale", categoryLabel: "Real Estate — For Sale", browseHref: "/real-estate/for-sale", accentColor: "emerald" })}
-                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-emerald-300 text-left w-full"
-              >
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <Building className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-lg font-bold text-gray-900 mb-2">For Sale</h4>
-                  <p className="text-sm text-gray-600">Houses & Properties</p>
-                  <div className="mt-4 flex items-center justify-center gap-2">
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                      {getProductsByCategory().realEstate.forSale.length} properties
-                    </span>
-                    <span className="text-xs text-emerald-600 flex items-center gap-0.5 font-medium">
-                      <Search className="w-3 h-3" /> Find supplier
-                    </span>
-                  </div>
-                </div>
-              </button>
-
-              {/* Vehicles — For Rent */}
-              <button
-                onClick={() => openSearch({ category: "Vehicles", subcategory: "for-rent", categoryLabel: "Vehicles — For Rent", browseHref: "/vehicles/for-rent", accentColor: "blue" })}
-                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-blue-300 text-left w-full"
-              >
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <Car className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-lg font-bold text-gray-900 mb-2">For Rent</h4>
-                  <p className="text-sm text-gray-600">Sedans, SUVs, Trucks & More</p>
-                  <div className="mt-4 flex items-center justify-center gap-2">
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                      {getProductsByCategory().vehicles.forRent.length} vehicles
-                    </span>
-                    <span className="text-xs text-blue-600 flex items-center gap-0.5 font-medium">
-                      <Search className="w-3 h-3" /> Find supplier
-                    </span>
-                  </div>
-                </div>
-              </button>
-
-              {/* Vehicles — For Sale */}
-              <button
-                onClick={() => openSearch({ category: "Vehicles", subcategory: "for-sale", categoryLabel: "Vehicles — For Sale", browseHref: "/vehicles/for-sale", accentColor: "blue" })}
-                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-sky-300 text-left w-full"
-              >
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-sky-500 to-sky-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <Car className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-lg font-bold text-gray-900 mb-2">For Sale</h4>
-                  <p className="text-sm text-gray-600">Buy Cars, Trucks & Motorcycles</p>
-                  <div className="mt-4 flex items-center justify-center gap-2">
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                      {getProductsByCategory().vehicles.forSale.length} vehicles
-                    </span>
-                    <span className="text-xs text-sky-600 flex items-center gap-0.5 font-medium">
-                      <Search className="w-3 h-3" /> Find supplier
-                    </span>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Industry Category */}
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
-              <Factory className="w-5 h-5 text-[#023E4A]" /> Industry
-            </h3>
-            <div className="grid grid-cols-1">
-              {/* Industry — Finished Products → browse industries, then their products */}
-              <Link
-                href="/industry/finished-products"
-                className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-slate-400 text-left w-full"
-              >
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-teal-600 to-teal-700 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <BoxesIcon className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-lg font-bold text-gray-900 mb-2">Finished Products</h4>
-                  <p className="text-sm text-gray-600">Browse industries and the products they sell</p>
-                  <div className="mt-4 flex items-center justify-center gap-2">
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                      {getProductsByCategory().industry.finishedProducts.length} items
-                    </span>
-                    <span className="text-xs text-teal-600 flex items-center gap-0.5 font-medium">
-                      <ArrowRight className="w-3 h-3" /> View industries
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            </div>
-          </div>
-
-          {/* Other Products + View All Products — same row */}
-          <div className="flex items-center justify-between gap-4 mb-8">
-            <Link
-              href="/other-products"
-              className="group inline-flex items-center gap-3 px-8 py-4 border-2 border-gray-200 bg-white rounded-xl text-gray-700 font-semibold text-base hover:shadow-lg hover:border-gray-400 transition-all duration-300"
-            >
-              <div className="w-10 h-10 bg-gradient-to-br from-gray-500 to-gray-600 text-white rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Package className="w-5 h-5" />
               </div>
-              Other Products
-              <ArrowRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
-            </Link>
 
-            <Link
-              href="/view-products"
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#023E4A] hover:bg-[#012d36] transition-colors"
-            >
-              View All Products
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
+              {/* Vehicles */}
+              <div>
+                <GroupHeader icon={Car} title="Vehicles" accent="text-blue-600" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <CategoryCard
+                    icon={Car} gradient="from-blue-600 to-blue-700" accent="text-blue-600"
+                    title="For Rent" desc="Sedans, SUVs, Trucks & More"
+                    count={cats.vehicles.forRent.length} unit="vehicles"
+                    cta="Find supplier" ctaIcon={Search}
+                    onClick={() => openSearch({ category: "Vehicles", subcategory: "for-rent", categoryLabel: "Vehicles — For Rent", browseHref: "/vehicles/for-rent", accentColor: "blue" })}
+                  />
+                  <CategoryCard
+                    icon={Car} gradient="from-sky-500 to-sky-600" accent="text-sky-600"
+                    title="For Sale" desc="Buy Cars, Trucks & Motorcycles"
+                    count={cats.vehicles.forSale.length} unit="vehicles"
+                    cta="Find supplier" ctaIcon={Search}
+                    onClick={() => openSearch({ category: "Vehicles", subcategory: "for-sale", categoryLabel: "Vehicles — For Sale", browseHref: "/vehicles/for-sale", accentColor: "blue" })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Food & Dining */}
+            <div>
+              <GroupHeader icon={UtensilsCrossed} title="Food & Dining" accent="text-orange-600" />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {foodItems.map((f) => (
+                  <CategoryCard
+                    key={f.key}
+                    icon={f.icon} gradient={f.gradient} accent={f.accent}
+                    title={f.title} desc={f.desc}
+                    count={f.count} unit="items"
+                    cta="Browse" ctaIcon={ArrowRight}
+                    href={f.href}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Industry & more */}
+            <div>
+              <GroupHeader icon={Factory} title="Industry & More" accent="text-indigo-600" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <CategoryCard
+                  icon={BoxesIcon} gradient="from-indigo-500 to-blue-600" accent="text-indigo-600"
+                  title="Industry — Finished Products" desc="Browse industries and the products they sell"
+                  count={cats.industry.finishedProducts.length} unit="items"
+                  cta="View industries" ctaIcon={ArrowRight}
+                  href="/industry/finished-products"
+                />
+                <CategoryCard
+                  icon={Package} gradient="from-slate-500 to-gray-600" accent="text-gray-600"
+                  title="Other Products" desc="Everything else on the marketplace"
+                  count={cats.other.length} unit="items"
+                  cta="Browse" ctaIcon={ArrowRight}
+                  href="/other-products"
+                />
+                {/* View all — accent call to action */}
+                <Link
+                  href="/view-products"
+                  className="group relative overflow-hidden rounded-2xl p-5 w-full flex flex-col items-center justify-center text-center bg-gradient-to-br from-[#023E4A] to-[#0097A7] text-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                >
+                  <Search className="w-7 h-7 mb-2 opacity-90" />
+                  <span className="text-base font-bold">View All Products</span>
+                  <span className="text-xs text-white/80 mt-1">See the full catalog in one place</span>
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold">
+                    Explore <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>

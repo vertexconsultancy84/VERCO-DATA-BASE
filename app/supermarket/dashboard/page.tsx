@@ -118,17 +118,17 @@ function SupermarketDashboardContent() {
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-r from-[#023E4A] to-[#0097A7] text-white">
         <div className="absolute inset-0 bg-black/10" />
-        <div className="relative max-w-7xl mx-auto px-4 pt-28 pb-16 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center shrink-0">
-              <ShoppingCart className="w-8 h-8 text-white" />
+        <div className="relative max-w-7xl mx-auto px-4 pt-20 pb-8 sm:px-6 sm:pt-24 sm:pb-10 lg:px-8">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 ring-1 ring-white/25 rounded-xl flex items-center justify-center shrink-0">
+              <ShoppingCart className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
             </div>
-            <div>
-              <p className="text-white/70 text-sm font-medium uppercase tracking-wide">
+            <div className="min-w-0">
+              <p className="text-white/70 text-xs sm:text-sm font-medium uppercase tracking-wide">
                 Supermarket Dashboard
               </p>
-              <h1 className="text-3xl font-bold">Welcome, {user.name}!</h1>
-              <p className="mt-1 text-white/80">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">Welcome, {user.name}!</h1>
+              <p className="mt-0.5 text-sm text-white/80 hidden sm:block">
                 Manage your supermarket stock, pricing and product listings
               </p>
             </div>

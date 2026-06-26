@@ -7,7 +7,7 @@ import { MapPin, Calendar, Phone, Mail, MessageSquare, Utensils, Star, Filter, H
 import Link from "next/link";
 import Image from "next/image";
 import { getAllPublishedProducts } from "@/app/actions/product";
-import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
+import FoodMenuCard from "@/components/FoodMenuCard";
 import Header from "@/components/Header";
 import ShoppingCartComponent from "@/components/ShoppingCart";
 
@@ -152,14 +152,12 @@ export default function RestaurantPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {products.map((product) => (
-              <SimpleEnhancedProductCard 
-                key={product.id} 
-                product={product as any} 
-                showAddToCart={true}
-              />
-            ))}
+          <div className="rounded-3xl bg-[#3a4a6b] px-6 py-12 sm:px-10">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+              {products.map((product) => (
+                <FoodMenuCard key={product.id} product={product as any} />
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -29,13 +29,39 @@ export async function getOrdersForMyIndustryProducts() {
 
     const productIds = myProducts.map((p) => p.id);
 
-    return await prisma.order.findMany({
+    const orders = await prisma.order.findMany({
       where: { productId: { in: productIds } },
       orderBy: { createdAt: "desc" },
     });
+
+    // `saleChannel` was added to the schema after the Prisma client was last
+    // generated, so findMany may not return it. Pull it via a raw read and
+    // merge so the orders table can show "Manual" vs "Online" reliably.
+    return await withSaleChannel(orders);
   } catch (error) {
     console.error("getOrdersForMyIndustryProducts:", error);
     return [];
+  }
+}
+
+// Attach `saleChannel` (read raw from MongoDB) to a list of orders.
+// Falls back to "online" for legacy orders that never had the field set.
+async function withSaleChannel<T extends { id: string }>(orders: T[]): Promise<(T & { saleChannel: string })[]> {
+  if (orders.length === 0) return orders as (T & { saleChannel: string })[];
+  try {
+    const result: any = await (prisma as any).$runCommandRaw({
+      find: "Order",
+      filter: { _id: { $in: orders.map((o) => ({ $oid: o.id })) } },
+      projection: { saleChannel: 1 },
+    });
+    const docs: any[] = result?.cursor?.firstBatch ?? [];
+    const channelById = new Map<string, string>(
+      docs.map((d) => [String(d._id?.$oid ?? d._id), d.saleChannel ?? "online"])
+    );
+    return orders.map((o) => ({ ...o, saleChannel: channelById.get(o.id) ?? "online" }));
+  } catch (error) {
+    console.warn("withSaleChannel:", error);
+    return orders.map((o) => ({ ...o, saleChannel: "online" }));
   }
 }
 

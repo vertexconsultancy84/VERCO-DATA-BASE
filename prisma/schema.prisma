@@ -161,6 +161,7 @@ model Order {
   paymentVerifiedBy String? @db.ObjectId // Admin who verified payment
   paymentVerifiedAt DateTime? // When payment was verified
   fulfillmentMethod String? @default("delivery") // "pickup" or "delivery"
+  saleChannel   String?  @default("online") // "online" (placed through the site) or "manual" (recorded in person)
   deliveryPersonName String? // Name of person who will deliver / receive the order
   contractUploaded Boolean @default(false) // Whether signed contract has been uploaded
   contractFileUrl String? // URL to uploaded signed contract

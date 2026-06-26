@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getAllPublishedProducts } from "@/app/actions/product";
@@ -8,7 +8,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
 import ShoppingCartComponent from "@/components/ShoppingCart";
-import { Package, Star, Users, Filter, Home, Building, Utensils, ShoppingBasket, ChefHat, Truck, Croissant, Coffee, Factory, Layers, BoxesIcon, Car, ShoppingCart } from "lucide-react";
+import { Package, Star, Users, Filter, Home, Building, UtensilsCrossed, ShoppingBasket, ChefHat, Truck, Croissant, Soup, Factory, Layers, BoxesIcon, Car, ShoppingCart, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -68,6 +68,56 @@ interface ViewProduct {
     mainImage: string | null;
     mainVideo: string | null;
   };
+}
+
+// ── Shared presentational pieces for the category browser ──
+
+function GroupHeader({ icon: Icon, title, accent }: { icon: React.ElementType; title: string; accent: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4">
+      <span className={`w-9 h-9 rounded-xl bg-white border border-gray-200 shadow-sm flex items-center justify-center ${accent}`}>
+        <Icon className="w-5 h-5" strokeWidth={2.2} />
+      </span>
+      <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+    </div>
+  );
+}
+
+interface CategoryCardProps {
+  icon: React.ElementType;
+  gradient: string;
+  title: string;
+  desc: string;
+  count: number;
+  unit: string;
+  accent: string;
+  href: string;
+}
+
+function CategoryCard({ icon: Icon, gradient, title, desc, count, unit, accent, href }: CategoryCardProps) {
+  return (
+    <Link
+      href={href}
+      className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 w-full text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-transparent"
+    >
+      <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${gradient} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      <div className="flex flex-col items-center text-center">
+        <div className={`w-12 h-12 bg-gradient-to-br ${gradient} text-white rounded-2xl flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform`}>
+          <Icon className="w-6 h-6" />
+        </div>
+        <h4 className="text-base font-bold text-gray-900 mb-1">{title}</h4>
+        <p className="text-xs text-gray-500 leading-snug min-h-[2rem]">{desc}</p>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <span className="text-[11px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+            {count} {unit}
+          </span>
+          <span className={`text-[11px] ${accent} flex items-center gap-0.5 font-semibold whitespace-nowrap`}>
+            <ArrowRight className="w-3 h-3" /> Browse
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
 }
 
 function ViewProductsContent() {
@@ -147,6 +197,39 @@ function ViewProductsContent() {
     }
   };
 
+  // Per-category counts, computed once per products change
+  const counts = useMemo(() => {
+    const by = (cat: string, sub?: string) =>
+      products.filter((p) => p.category === cat && (sub ? p.subcategory === sub : true)).length;
+    return {
+      reRent: by("RealEstate", "for-rent"),
+      reSale: by("RealEstate", "for-sale"),
+      vehRent: by("Vehicles", "for-rent"),
+      vehSale: by("Vehicles", "for-sale"),
+      indRaw: by("Industry", "raw-materials"),
+      indFinished: by("Industry", "finished-products"),
+      food: {
+        restaurant: by("Food", "restaurant"),
+        grocery: by("Food", "grocery"),
+        catering: by("Food", "catering"),
+        foodDelivery: by("Food", "food-delivery"),
+        bakery: by("Food", "bakery"),
+        otherFood: by("Food", "other-food"),
+      },
+      supermarket: by("OtherProducts", "supermarket"),
+      other: by("OtherProducts"),
+    };
+  }, [products]);
+
+  const foodItems = [
+    { key: "restaurant",    title: "Restaurant",    desc: "Dine-in & local eateries",   href: "/food/restaurant",    icon: UtensilsCrossed, gradient: "from-amber-500 to-orange-600",   accent: "text-orange-600", count: counts.food.restaurant },
+    { key: "grocery",       title: "Grocery",       desc: "Fresh produce & essentials", href: "/food/grocery",       icon: ShoppingBasket,  gradient: "from-lime-500 to-green-600",     accent: "text-green-600",  count: counts.food.grocery },
+    { key: "catering",      title: "Catering",      desc: "Events & bulk catering",     href: "/food/catering",      icon: ChefHat,         gradient: "from-rose-500 to-pink-600",      accent: "text-rose-600",   count: counts.food.catering },
+    { key: "food-delivery", title: "Food Delivery", desc: "Order in, delivered fast",   href: "/food/food-delivery", icon: Truck,           gradient: "from-cyan-500 to-teal-600",      accent: "text-teal-600",   count: counts.food.foodDelivery },
+    { key: "bakery",        title: "Bakery",        desc: "Bread, cakes & pastries",    href: "/food/bakery",        icon: Croissant,       gradient: "from-yellow-500 to-amber-600",   accent: "text-amber-600",  count: counts.food.bakery },
+    { key: "other-food",    title: "Other Food",    desc: "More tasty options",         href: "/food/other-food",    icon: Soup,            gradient: "from-fuchsia-500 to-purple-600", accent: "text-purple-600", count: counts.food.otherFood },
+  ];
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -197,211 +280,102 @@ function ViewProductsContent() {
 
       {/* Categories Section */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Real Estate Categories */}
-        <div className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center">
-            Real Estate
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Link
-              href="/real-estate/for-rent"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Home className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">For Rent</h4>
-                <p className="text-sm text-gray-600">Apartments, Houses & Working Spaces</p>
-              </div>
-            </Link>
-
-            <Link
-              href="/real-estate/for-sale"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Building className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">For Sale</h4>
-                <p className="text-sm text-gray-600">Houses & Properties</p>
-              </div>
-            </Link>
-          </div>
+        <div className="mb-8 text-center">
+          <span className="inline-block text-xs font-semibold uppercase tracking-wider text-[#0097A7] bg-cyan-50 px-3 py-1 rounded-full mb-3">
+            Shop by Category
+          </span>
+          <h2 className="text-2xl font-bold text-gray-900">Find what you're looking for</h2>
         </div>
 
-        {/* Vehicles Categories */}
-        <div className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
-            <Car className="w-5 h-5 text-blue-600" /> Vehicles
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Link
-              href="/vehicles/for-rent"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-blue-300"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Car className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">For Rent</h4>
-                <p className="text-sm text-gray-600">Cars, Bikes & Other Vehicles</p>
+        <div className="space-y-10">
+          {/* Real Estate & Vehicles — side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div>
+              <GroupHeader icon={Home} title="Real Estate" accent="text-[#023E4A]" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <CategoryCard
+                  icon={Home} gradient="from-[#023E4A] to-[#0097A7]" accent="text-[#023E4A]"
+                  title="For Rent" desc="Apartments, Houses & Working Spaces"
+                  count={counts.reRent} unit="properties" href="/real-estate/for-rent"
+                />
+                <CategoryCard
+                  icon={Building} gradient="from-emerald-500 to-emerald-600" accent="text-emerald-600"
+                  title="For Sale" desc="Houses & Properties"
+                  count={counts.reSale} unit="properties" href="/real-estate/for-sale"
+                />
               </div>
-            </Link>
+            </div>
 
-            <Link
-              href="/vehicles/for-sale"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-blue-300"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Car className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">For Sale</h4>
-                <p className="text-sm text-gray-600">Buy Cars & Vehicles</p>
+            <div>
+              <GroupHeader icon={Car} title="Vehicles" accent="text-blue-600" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <CategoryCard
+                  icon={Car} gradient="from-blue-600 to-blue-700" accent="text-blue-600"
+                  title="For Rent" desc="Cars, Bikes & Other Vehicles"
+                  count={counts.vehRent} unit="vehicles" href="/vehicles/for-rent"
+                />
+                <CategoryCard
+                  icon={Car} gradient="from-sky-500 to-sky-600" accent="text-sky-600"
+                  title="For Sale" desc="Buy Cars, Trucks & Motorcycles"
+                  count={counts.vehSale} unit="vehicles" href="/vehicles/for-sale"
+                />
               </div>
-            </Link>
-          </div>
-        </div>
-
-        {/* Industry Categories */}
-        <div className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
-            <Factory className="w-5 h-5 text-[#023E4A]" /> Industry
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Link
-              href="/industry/raw-materials"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-slate-600 to-slate-700 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Layers className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">Raw Materials</h4>
-                <p className="text-sm text-gray-600">Industrial raw materials & inputs</p>
-              </div>
-            </Link>
-
-            <Link
-              href="/industry/finished-products"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-teal-400"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-teal-600 to-teal-700 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <BoxesIcon className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">Finished Products</h4>
-                <p className="text-sm text-gray-600">Manufactured & finished goods</p>
-              </div>
-            </Link>
-          </div>
-        </div>
-
-        {/* Other Products — includes Food & Dining */}
-        <div className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
-            <Package className="w-5 h-5 text-gray-600" /> Other Products
-          </h3>
-
-          <p className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wide">Food & Dining</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            <Link
-              href="/food/restaurant"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Utensils className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">Restaurant</h4>
-              </div>
-            </Link>
-
-            <Link
-              href="/food/grocery"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <ShoppingBasket className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">Grocery</h4>
-              </div>
-            </Link>
-
-            <Link
-              href="/food/catering"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <ChefHat className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">Catering</h4>
-              </div>
-            </Link>
-
-            <Link
-              href="/food/food-delivery"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Truck className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">Food Delivery</h4>
-              </div>
-            </Link>
-
-            <Link
-              href="/food/bakery"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Croissant className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">Bakery</h4>
-              </div>
-            </Link>
-
-            <Link
-              href="/food/other-food"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Coffee className="w-6 h-6" />
-                </div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">Other Food</h4>
-              </div>
-            </Link>
+            </div>
           </div>
 
-          <p className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wide">Supermarket</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <Link
-              href="/other-products/supermarket"
-              className="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg hover:border-[#D4A017]/50"
-            >
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <ShoppingCart className="w-6 h-6 text-white" />
-              </div>
-              <h4 className="text-lg font-bold text-gray-900 mb-2">Supermarket</h4>
-              <p className="text-sm text-gray-600">Groceries, essentials & everyday products</p>
-            </Link>
+          {/* Industry */}
+          <div>
+            <GroupHeader icon={Factory} title="Industry" accent="text-indigo-600" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <CategoryCard
+                icon={Layers} gradient="from-slate-500 to-slate-700" accent="text-slate-600"
+                title="Raw Materials" desc="Industrial raw materials & inputs"
+                count={counts.indRaw} unit="items" href="/industry/raw-materials"
+              />
+              <CategoryCard
+                icon={BoxesIcon} gradient="from-indigo-500 to-blue-600" accent="text-indigo-600"
+                title="Finished Products" desc="Manufactured & finished goods"
+                count={counts.indFinished} unit="items" href="/industry/finished-products"
+              />
+            </div>
           </div>
 
-          <p className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wide">General</p>
-          <Link
-            href="/other-products"
-            className="inline-flex items-center px-8 py-4 border border-transparent text-base font-medium rounded-xl text-white bg-[#023E4A] hover:bg-[#012d36] transition-colors"
-          >
-            <Package className="w-5 h-5 mr-2" />
-            Other Products
-          </Link>
+          {/* Food & Dining */}
+          <div>
+            <GroupHeader icon={UtensilsCrossed} title="Food & Dining" accent="text-orange-600" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {foodItems.map((f) => (
+                <CategoryCard
+                  key={f.key}
+                  icon={f.icon} gradient={f.gradient} accent={f.accent}
+                  title={f.title} desc={f.desc}
+                  count={f.count} unit="items" href={f.href}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Supermarket & more */}
+          <div>
+            <GroupHeader icon={Package} title="Supermarket & More" accent="text-emerald-600" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <CategoryCard
+                icon={ShoppingCart} gradient="from-emerald-500 to-emerald-700" accent="text-emerald-600"
+                title="Supermarket" desc="Groceries, essentials & everyday products"
+                count={counts.supermarket} unit="items" href="/other-products/supermarket"
+              />
+              <CategoryCard
+                icon={Package} gradient="from-slate-500 to-gray-600" accent="text-gray-600"
+                title="Other Products" desc="Everything else on the marketplace"
+                count={counts.other} unit="items" href="/other-products"
+              />
+              <div className="group relative overflow-hidden rounded-2xl p-5 w-full flex flex-col items-center justify-center text-center bg-gradient-to-br from-[#023E4A] to-[#0097A7] text-white shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                <Package className="w-7 h-7 mb-2 opacity-90" />
+                <span className="text-base font-bold">All Products</span>
+                <span className="text-xs text-white/80 mt-1">{products.length} listings in total</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
