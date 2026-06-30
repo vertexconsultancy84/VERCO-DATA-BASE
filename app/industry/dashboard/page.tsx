@@ -41,6 +41,13 @@ const SUBCATEGORY_LABELS: Record<string, string> = {
 // Stock Management tool cards — each with its own icon and accent gradient.
 const STOCK_TOOLS = [
   {
+    href: "/industry/stock-management",
+    title: "Finished Products Records",
+    desc: "Live overview of stock levels, alerts and value",
+    icon: BoxesIcon,
+    gradient: "from-[#023E4A] to-[#0097A7]",
+  },
+  {
     href: "/industry/financial-kpi",
     title: "Stock Records",
     desc: "Track inventory levels and financial KPIs",

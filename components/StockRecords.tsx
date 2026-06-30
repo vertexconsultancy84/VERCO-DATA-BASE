@@ -5,6 +5,7 @@ import {
   Layers, BoxesIcon, Plus, Trash2, AlertCircle,
   ChevronDown, ChevronRight, ArrowDownCircle, ArrowUpCircle,
   Clock, TrendingUp, TrendingDown, Pencil, X, Warehouse, Check, Download,
+  ImagePlus, ImageIcon, CheckCircle2, EyeOff, History,
 } from "lucide-react";
 import {
   getRawMaterialRecords,
@@ -15,6 +16,7 @@ import {
   getFinishedProductStockRecords,
   saveFinishedProductStockRecord,
   updateFinishedProductStockRecord,
+  patchFinishedProductStockRecord,
   deleteFinishedProductStockRecord,
   getStockMovements,
   saveStockMovement,
@@ -29,6 +31,7 @@ import {
   type StockMovement,
   type RawMaterialStockItem,
 } from "@/app/actions/industry";
+import StockInventoryDashboard from "@/components/StockInventoryDashboard";
 
 const frw = (n: number) =>
   "Frw " + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -41,6 +44,26 @@ function newExpense(): CustomExpense {
 
 function today() {
   return new Date().toISOString().split("T")[0];
+}
+
+// Read a chosen image file into a base64 data URL (stored straight on the record).
+// Rejects non-images and anything over 2MB so records stay light.
+function readImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      reject(new Error("Use a JPEG, PNG, GIF or WebP image."));
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      reject(new Error("Image must be under 2MB."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Could not read the image."));
+    reader.readAsDataURL(file);
+  });
 }
 
 // ─── PDF table download ──────────────────────────────────────────────────────
@@ -1012,6 +1035,8 @@ const FP_DEFAULTS = {
   laborCost: "", packagingCost: "", transportCost: "", otherExpenses: "",
   // supermarket-only fields
   currentStock: "", amountPerUnit: "", recordDate: today(),
+  // inventory-management fields
+  unitOfMeasure: "Piece", lowStockThreshold: "", reservedStock: "", imageUrl: "",
 };
 
 function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | "supermarket" }) {
@@ -1032,6 +1057,12 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
   // saved Raw Material Calculator records the manager can pull costs from (industry only)
   const [rawRecords, setRawRecords] = useState<RawMaterialRecord[]>([]);
   const [selectedRawIds, setSelectedRawIds] = useState<string[]>([]);
+  // inline editing of low-stock threshold / reserved stock (recordId → draft value)
+  const [thrDraft, setThrDraft] = useState<Record<string, string>>({});
+  const [resDraft, setResDraft] = useState<Record<string, string>>({});
+  // image upload feedback for the add form
+  const [imgError, setImgError] = useState("");
+  const [editImgError, setEditImgError] = useState("");
 
   const loadMovements = useCallback(async () => {
     setMovements(await getStockMovements());
@@ -1077,9 +1108,63 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
     return map;
   }, [records, movements, isSupermarket]);
 
+  // most recent IN/OUT movement per record, for the "Recent Trans." column
+  const lastMovementMap = useMemo(() => {
+    const map: Record<string, StockMovement> = {};
+    for (const m of movements) {
+      if (m.type !== "finished") continue;
+      const prev = map[m.recordId];
+      if (!prev || new Date(m.date).getTime() > new Date(prev.date).getTime()) map[m.recordId] = m;
+    }
+    return map;
+  }, [movements]);
+
+  const movementCountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const m of movements) {
+      if (m.type !== "finished") continue;
+      map[m.recordId] = (map[m.recordId] ?? 0) + 1;
+    }
+    return map;
+  }, [movements]);
+
   const n = (v: string) => parseFloat(v) || 0;
 
-  const resetForm = () => { setForm(FP_DEFAULTS); setCustomExpenses([]); setError(""); setSelectedRawIds([]); };
+  const resetForm = () => {
+    setForm(FP_DEFAULTS); setCustomExpenses([]); setError(""); setSelectedRawIds([]); setImgError("");
+  };
+
+  // ── image pickers ──────────────────────────────────────────────────────────
+  const handleAddImage = async (file?: File) => {
+    setImgError("");
+    if (!file) return;
+    try { f("imageUrl", await readImageFile(file)); }
+    catch (err) { setImgError(err instanceof Error ? err.message : "Could not read image."); }
+  };
+
+  const handleEditImage = async (file?: File) => {
+    setEditImgError("");
+    if (!file) return;
+    try { ef("imageUrl", await readImageFile(file)); }
+    catch (err) { setEditImgError(err instanceof Error ? err.message : "Could not read image."); }
+  };
+
+  // ── inline patch helpers (table) ─────────────────────────────────────────────
+  const patchRecord = async (
+    id: string,
+    data: Partial<Pick<FinishedProductStockRecord, "imageUrl" | "lowStockThreshold" | "reservedStock" | "published">>
+  ) => {
+    await patchFinishedProductStockRecord(id, data);
+    setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, ...data } : r)));
+  };
+
+  const togglePublish = (r: FinishedProductStockRecord) => patchRecord(r.id, { published: !r.published });
+
+  const handleRowImage = async (id: string, file?: File) => {
+    if (!file) return;
+    try { await patchRecord(id, { imageUrl: await readImageFile(file) }); }
+    catch (err) { alert(err instanceof Error ? err.message : "Could not read image."); }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1106,6 +1191,11 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
             costPerUnit: n(form.amountPerUnit),
             currentStock: form.currentStock === "" ? qty : n(form.currentStock),
             recordDate: form.recordDate,
+            imageUrl: form.imageUrl || undefined,
+            unitOfMeasure: form.unitOfMeasure,
+            lowStockThreshold: n(form.lowStockThreshold),
+            reservedStock: n(form.reservedStock),
+            published: false,
           }
         : {
             // industry finished products are built entirely from saved raw material
@@ -1120,6 +1210,11 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
             customExpenses: [],
             totalProductionCost: selectedRawCost,
             costPerUnit: selectedRawQty > 0 ? selectedRawCost / selectedRawQty : 0,
+            imageUrl: form.imageUrl || undefined,
+            unitOfMeasure: form.unitOfMeasure,
+            lowStockThreshold: n(form.lowStockThreshold),
+            reservedStock: n(form.reservedStock),
+            published: false,
           }
     );
     setSaving(false);
@@ -1149,8 +1244,13 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
       currentStock: r.currentStock != null ? String(r.currentStock) : String(r.quantityProduced),
       amountPerUnit: String(r.costPerUnit),
       recordDate: r.recordDate ?? r.createdAt.split("T")[0],
+      unitOfMeasure: r.unitOfMeasure ?? "Piece",
+      lowStockThreshold: r.lowStockThreshold != null ? String(r.lowStockThreshold) : "",
+      reservedStock: r.reservedStock != null ? String(r.reservedStock) : "",
+      imageUrl: r.imageUrl ?? "",
     });
     setEditCustomExpenses(r.customExpenses ?? []);
+    setEditImgError("");
   };
 
   const handleEditSubmit = async (id: string) => {
@@ -1191,6 +1291,14 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
         costPerUnit,
       };
     }
+    // inventory fields shared by both variants
+    payload = {
+      ...payload,
+      imageUrl: editForm.imageUrl || undefined,
+      unitOfMeasure: editForm.unitOfMeasure,
+      lowStockThreshold: n(editForm.lowStockThreshold),
+      reservedStock: n(editForm.reservedStock),
+    };
     const result = await updateFinishedProductStockRecord(id, payload);
     setEditSaving(false);
     if (result.success) {
@@ -1407,6 +1515,62 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
             </>
           )}
 
+          {/* Product image + inventory settings (both variants) */}
+          <div className="border-t border-teal-200 pt-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Product Image & Inventory</p>
+            {imgError && (
+              <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {imgError}
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* image picker */}
+              <div className="shrink-0">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Product Image</label>
+                {form.imageUrl ? (
+                  <div className="relative w-28 h-28 rounded-lg overflow-hidden border border-teal-200 group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={form.imageUrl} alt="Product preview" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => f("imageUrl", "")}
+                      className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                      title="Remove image">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="w-28 h-28 flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-teal-300 text-teal-600 hover:bg-teal-50 cursor-pointer transition-colors">
+                    <ImagePlus className="w-6 h-6" />
+                    <span className="text-[10px] font-medium">Upload</span>
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={(e) => handleAddImage(e.target.files?.[0])} />
+                  </label>
+                )}
+              </div>
+              {/* inventory fields */}
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Unit of Measure</label>
+                  <select value={form.unitOfMeasure} onChange={(e) => f("unitOfMeasure", e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
+                    {UNITS.map((u) => <option key={u}>{u}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Low Stock Threshold</label>
+                  <input type="number" min="0" step="any" value={form.lowStockThreshold}
+                    onChange={(e) => f("lowStockThreshold", e.target.value)} placeholder="Alert level"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Reserved Stock</label>
+                  <input type="number" min="0" step="any" value={form.reservedStock}
+                    onChange={(e) => f("reservedStock", e.target.value)} placeholder="For existing orders"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-2 justify-end border-t border-teal-200 pt-4">
             <button type="button" onClick={() => { setShowForm(false); resetForm(); }}
               className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
@@ -1429,10 +1593,7 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
           <table className="w-full text-xs border-collapse min-w-[960px]">
             <thead>
               <tr className="bg-teal-700 text-white">
-                {(isSupermarket
-                  ? ["","#","Product Name","Qty Purchased","Current Stock","Amount/Unit","Other","Total","Date",""]
-                  : ["","#","Product Name","Qty Produced","Current Stock","Prod. Cost","Labor","Packaging","Transport","Other","Extra","Total Cost","Date",""]
-                ).map((h, i) => (
+                {["","#","Product",isSupermarket ? "Initial (Purchased)" : "Initial Stock","Current Stock","Unit","Low Stock ✎","Reserved ✎","Recent Trans.","Status",""].map((h, i) => (
                   <th key={i} className="px-3 py-2.5 text-left font-semibold whitespace-nowrap border-r border-teal-600 last:border-r-0">{h}</th>
                 ))}
               </tr>
@@ -1440,6 +1601,18 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
             <tbody>
               {records.map((r, i) => (
                 <Fragment key={r.id}>
+                  {(() => {
+                    const initial = r.quantityProduced;
+                    const base = isSupermarket && r.currentStock != null ? r.currentStock : r.quantityProduced;
+                    const current = currentStockMap[r.id] ?? base;
+                    const unit = r.unitOfMeasure ?? "Piece";
+                    const threshold = r.lowStockThreshold ?? 0;
+                    const reserved = r.reservedStock ?? 0;
+                    const low = threshold > 0 && current <= threshold;
+                    const stockColor = current <= 0 || low ? "text-red-600" : "text-emerald-600";
+                    const last = lastMovementMap[r.id];
+                    const count = movementCountMap[r.id] ?? 0;
+                    return (
                   <tr
                     className={`border-b border-gray-100 hover:bg-teal-50/40 transition-colors cursor-pointer ${i % 2 === 0 ? "bg-teal-50/20" : "bg-white"}`}
                     onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}
@@ -1448,42 +1621,94 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
                       {expandedId === r.id ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                     </td>
                     <td className="px-3 py-2 text-gray-400 font-mono">{i + 1}</td>
-                    <td className="px-3 py-2 font-semibold text-teal-900 whitespace-nowrap">{r.productName}</td>
-                    {isSupermarket ? (
-                      <>
-                        <td className="px-3 py-2 text-right">{r.quantityProduced.toLocaleString()}</td>
-                        <td className="px-3 py-2 text-right font-semibold">
-                          {(currentStockMap[r.id] ?? r.currentStock ?? r.quantityProduced).toLocaleString()}
-                        </td>
-                        <td className="px-3 py-2 text-right">{frw(r.costPerUnit)}</td>
-                        <td className="px-3 py-2 text-right">{frw(r.otherExpenses)}</td>
-                        <td className="px-3 py-2 text-right font-bold text-teal-900">{frw(r.totalProductionCost)}</td>
-                        <td className="px-3 py-2 text-gray-400 whitespace-nowrap">
-                          {new Date(r.recordDate ?? r.createdAt).toLocaleDateString()}
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-3 py-2 text-right">{r.quantityProduced.toLocaleString()}</td>
-                        {(() => {
-                          const current = currentStockMap[r.id] ?? r.quantityProduced;
-                          const color = current <= 0 ? "text-red-600" : current < r.quantityProduced * 0.2 ? "text-amber-600" : "text-emerald-600";
-                          return <td className={`px-3 py-2 text-right font-bold ${color}`}>{current.toLocaleString()}</td>;
-                        })()}
-                        <td className="px-3 py-2 text-right">{frw(r.productionCost)}</td>
-                        <td className="px-3 py-2 text-right">{frw(r.laborCost)}</td>
-                        <td className="px-3 py-2 text-right">{frw(r.packagingCost)}</td>
-                        <td className="px-3 py-2 text-right">{frw(r.transportCost)}</td>
-                        <td className="px-3 py-2 text-right">{frw(r.otherExpenses)}</td>
-                        <td className="px-3 py-2 text-right text-purple-700">
-                          {(r.customExpenses ?? []).length > 0
-                            ? frw((r.customExpenses ?? []).reduce((s, e) => s + e.amount, 0))
-                            : <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className="px-3 py-2 text-right font-bold text-teal-900">{frw(r.totalProductionCost)}</td>
-                        <td className="px-3 py-2 text-gray-400 whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</td>
-                      </>
-                    )}
+                    {/* Product: image thumbnail + name */}
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2.5">
+                        <label className="relative w-11 h-11 shrink-0 rounded-lg overflow-hidden border border-teal-200 bg-teal-50 flex items-center justify-center cursor-pointer group"
+                          title={r.imageUrl ? "Change image" : "Upload image"}>
+                          {r.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.imageUrl} alt={r.productName} className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon className="w-5 h-5 text-teal-300" />
+                          )}
+                          <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <ImagePlus className="w-4 h-4 text-white" />
+                          </span>
+                          <input type="file" accept="image/*" className="hidden"
+                            onChange={(e) => handleRowImage(r.id, e.target.files?.[0])} />
+                        </label>
+                        <span className="font-semibold text-teal-900">{r.productName}</span>
+                      </div>
+                    </td>
+                    {/* Initial stock */}
+                    <td className="px-3 py-2 text-right text-gray-600">{initial.toLocaleString()}</td>
+                    {/* Current stock */}
+                    <td className={`px-3 py-2 text-right font-bold ${stockColor}`}>
+                      {current.toLocaleString()}
+                      {low && <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-red-500 align-middle" title="Low stock" />}
+                    </td>
+                    {/* Unit of measure */}
+                    <td className="px-3 py-2">
+                      <span className="bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded">{unit}</span>
+                    </td>
+                    {/* Low stock threshold (inline editable) */}
+                    <td className="p-1 bg-amber-50/60" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="number" min="0" step="any"
+                        value={thrDraft[r.id] ?? String(threshold)}
+                        onChange={(e) => setThrDraft((p) => ({ ...p, [r.id]: e.target.value }))}
+                        onBlur={async () => {
+                          const val = parseFloat(thrDraft[r.id] ?? "");
+                          if (!isNaN(val) && val !== threshold) await patchRecord(r.id, { lowStockThreshold: val });
+                          setThrDraft((p) => { const x = { ...p }; delete x[r.id]; return x; });
+                        }}
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                        className="w-16 text-right font-semibold text-amber-700 bg-white border border-amber-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400 text-xs"
+                      />
+                    </td>
+                    {/* Reserved stock (inline editable) */}
+                    <td className="p-1" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="number" min="0" step="any"
+                        value={resDraft[r.id] ?? String(reserved)}
+                        onChange={(e) => setResDraft((p) => ({ ...p, [r.id]: e.target.value }))}
+                        onBlur={async () => {
+                          const val = parseFloat(resDraft[r.id] ?? "");
+                          if (!isNaN(val) && val !== reserved) await patchRecord(r.id, { reservedStock: val });
+                          setResDraft((p) => { const x = { ...p }; delete x[r.id]; return x; });
+                        }}
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                        className="w-16 text-right font-semibold text-gray-700 bg-white border border-gray-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400 text-xs"
+                      />
+                    </td>
+                    {/* Recent transactions */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {last ? (
+                        <span className={`inline-flex items-center gap-1 ${last.movement === "in" ? "text-emerald-700" : "text-red-600"}`}>
+                          {last.movement === "in" ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                          {last.movement === "in" ? "+" : "−"}{last.quantity.toLocaleString()}
+                          <span className="text-gray-400">· {count} total</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-gray-400"><History className="w-3 h-3" /> No history</span>
+                      )}
+                    </td>
+                    {/* Status + publish toggle */}
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => togglePublish(r)}
+                        title={r.published ? "Click to unpublish" : "Click to publish"}
+                        className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border transition-colors ${
+                          r.published
+                            ? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                            : "bg-gray-50 border-gray-300 text-gray-500 hover:bg-gray-100"
+                        }`}
+                      >
+                        {r.published ? <CheckCircle2 className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                        {r.published ? "Available" : "Publish"}
+                      </button>
+                    </td>
                     <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         <button onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)}
@@ -1497,11 +1722,13 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
                       </div>
                     </td>
                   </tr>
+                    );
+                  })()}
 
                   {/* Edit row */}
                   {editingId === r.id && (
                     <tr key={`${r.id}-edit`} className="bg-blue-50 border-b border-blue-200">
-                      <td colSpan={isSupermarket ? 10 : 14} className="px-6 py-5">
+                      <td colSpan={11} className="px-6 py-5">
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-bold text-blue-800 uppercase tracking-wide">Edit Record</p>
@@ -1584,6 +1811,56 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
                           <CustomExpensesEditor expenses={editCustomExpenses} onChange={setEditCustomExpenses} accentColor="teal" />
                           </>
                           )}
+                          {/* Image + inventory (both variants) */}
+                          <div className="border-t border-blue-200 pt-3 space-y-3">
+                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Product Image & Inventory</p>
+                            {editImgError && (
+                              <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                <AlertCircle className="w-4 h-4 shrink-0" /> {editImgError}
+                              </div>
+                            )}
+                            <div className="flex flex-col sm:flex-row gap-4">
+                              <div className="shrink-0">
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Product Image</label>
+                                {editForm.imageUrl ? (
+                                  <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-blue-200 group">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={editForm.imageUrl} alt="Product preview" className="w-full h-full object-cover" />
+                                    <button type="button" onClick={() => ef("imageUrl", "")}
+                                      className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors" title="Remove image">
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <label className="w-24 h-24 flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 cursor-pointer transition-colors">
+                                    <ImagePlus className="w-5 h-5" />
+                                    <span className="text-[10px] font-medium">Upload</span>
+                                    <input type="file" accept="image/*" className="hidden"
+                                      onChange={(e) => handleEditImage(e.target.files?.[0])} />
+                                  </label>
+                                )}
+                              </div>
+                              <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Unit of Measure</label>
+                                  <select value={editForm.unitOfMeasure} onChange={(e) => ef("unitOfMeasure", e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                                    {UNITS.map((u) => <option key={u}>{u}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Low Stock Threshold</label>
+                                  <input type="number" min="0" step="any" value={editForm.lowStockThreshold} onChange={(e) => ef("lowStockThreshold", e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">Reserved Stock</label>
+                                  <input type="number" min="0" step="any" value={editForm.reservedStock} onChange={(e) => ef("reservedStock", e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                           <div className="flex gap-2 justify-end pt-2 border-t border-blue-200">
                             <button type="button" onClick={() => setEditingId(null)}
                               className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
@@ -1599,17 +1876,48 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
 
                   {expandedId === r.id && (
                     <tr key={`${r.id}-detail`} className="bg-teal-50/30 border-b border-teal-200">
-                      <td colSpan={isSupermarket ? 10 : 14} className="px-6 py-5">
-                        <div>
-                          <p className="text-xs font-semibold text-teal-700 mb-2 uppercase tracking-wide">Stock Movements</p>
-                          <MovementLog
-                            recordId={r.id}
-                            recordName={r.productName}
-                            unit="Piece"
-                            type="finished"
-                            initialQty={isSupermarket && r.currentStock != null ? r.currentStock : r.quantityProduced}
-                            onChange={loadMovements}
-                          />
+                      <td colSpan={11} className="px-6 py-5">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          <div>
+                            <p className="text-xs font-semibold text-teal-700 mb-2 uppercase tracking-wide">Cost Breakdown</p>
+                            <CostBreakdown
+                              rows={
+                                isSupermarket
+                                  ? [
+                                      { label: "Goods", amount: r.productionCost },
+                                      { label: "Other Expenses", amount: r.otherExpenses },
+                                    ]
+                                  : [
+                                      { label: "Production Cost", amount: r.productionCost },
+                                      { label: "Labor Cost", amount: r.laborCost },
+                                      { label: "Packaging Cost", amount: r.packagingCost },
+                                      { label: "Transport Cost", amount: r.transportCost },
+                                      { label: "Other Expenses", amount: r.otherExpenses },
+                                      ...(r.customExpenses ?? []).map((e) => ({ label: e.label || "Custom", amount: e.amount })),
+                                    ]
+                              }
+                              qty={r.quantityProduced}
+                              totalCost={r.totalProductionCost}
+                              accentClass="border-teal-200"
+                            />
+                            <div className="mt-2 text-xs text-gray-500">
+                              Recorded {new Date(r.recordDate ?? r.createdAt).toLocaleDateString()}
+                              {(r.reservedStock ?? 0) > 0 && (
+                                <span> · {(r.reservedStock ?? 0).toLocaleString()} reserved for orders</span>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-teal-700 mb-2 uppercase tracking-wide">Stock Movements</p>
+                            <MovementLog
+                              recordId={r.id}
+                              recordName={r.productName}
+                              unit={r.unitOfMeasure ?? "Piece"}
+                              type="finished"
+                              initialQty={isSupermarket && r.currentStock != null ? r.currentStock : r.quantityProduced}
+                              onChange={loadMovements}
+                            />
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -2162,14 +2470,14 @@ function MaterialStockTab() {
 
 export default function StockRecords({ variant = "industry" }: { variant?: "industry" | "supermarket" }) {
   const isSupermarket = variant === "supermarket";
-  const [activeTab, setActiveTab] = useState<"materials" | "raw" | "finished" | "movements">(
-    isSupermarket ? "finished" : "materials"
+  const [activeTab, setActiveTab] = useState<"materials" | "raw" | "inventory" | "movements">(
+    isSupermarket ? "inventory" : "materials"
   );
 
   const allTabs = [
     { id: "materials" as const, label: "Stock of Materials", icon: Warehouse },
     { id: "raw" as const, label: "Raw Material Calculator", icon: Layers },
-    { id: "finished" as const, label: "Finished Products Records", icon: BoxesIcon },
+    { id: "inventory" as const, label: "Finished Products Records", icon: BoxesIcon },
     { id: "movements" as const, label: "All Movements", icon: Clock },
   ];
 
@@ -2195,7 +2503,7 @@ export default function StockRecords({ variant = "industry" }: { variant?: "indu
                 activeTab === id
                   ? id === "materials" ? "border-amber-600 text-amber-700"
                   : id === "raw" ? "border-slate-700 text-slate-800"
-                  : id === "finished" ? "border-teal-700 text-teal-800"
+                  : id === "inventory" ? "border-[#0097A7] text-[#023E4A]"
                   : "border-gray-700 text-gray-800"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}>
@@ -2207,7 +2515,9 @@ export default function StockRecords({ variant = "industry" }: { variant?: "indu
         <div className="bg-white p-6">
           {activeTab === "materials" && <MaterialStockTab />}
           {activeTab === "raw" && <RawMaterialsTab />}
-          {activeTab === "finished" && <FinishedProductsTab variant={variant} />}
+          {activeTab === "inventory" && (
+            <StockInventoryDashboard productsSlot={<FinishedProductsTab variant={variant} />} />
+          )}
           {activeTab === "movements" && <AllMovementsTab variant={variant} />}
         </div>
       </div>

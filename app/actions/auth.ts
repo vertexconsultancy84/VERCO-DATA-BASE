@@ -199,7 +199,10 @@ export async function getUserSession() {
   try {
     const user = await prisma.user.findUnique({
       where: { id: sessionToken },
-      select: { id: true, name: true, email: true, category: true },
+      select: {
+        id: true, name: true, email: true, category: true,
+        phone: true, province: true, district: true, sector: true,
+      },
     });
     return user;
   } catch {

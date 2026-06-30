@@ -659,6 +659,12 @@ export interface FinishedProductStockRecord {
   // and the chosen record date; optional so the industry variant is unaffected
   currentStock?: number;
   recordDate?: string;
+  // inventory-management fields (optional so older records still load)
+  imageUrl?: string;          // product photo (base64 data URL)
+  unitOfMeasure?: string;     // Piece, Kg, Box, …
+  lowStockThreshold?: number; // alert level for current stock
+  reservedStock?: number;     // units held for existing orders
+  published?: boolean;        // manager has published the product (Available)
   createdAt: string;
 }
 
@@ -713,10 +719,45 @@ export async function getFinishedProductStockRecords(): Promise<FinishedProductS
       costPerUnit: d.costPerUnit as number,
       currentStock: d.currentStock as number | undefined,
       recordDate: d.recordDate as string | undefined,
+      imageUrl: d.imageUrl as string | undefined,
+      unitOfMeasure: d.unitOfMeasure as string | undefined,
+      lowStockThreshold: d.lowStockThreshold as number | undefined,
+      reservedStock: d.reservedStock as number | undefined,
+      published: d.published as boolean | undefined,
       createdAt: (d.createdAt as Date).toISOString(),
     }));
   } catch {
     return [];
+  } finally {
+    await client.close();
+  }
+}
+
+// Lightweight patch for single-field inline edits (image, threshold, reserved,
+// publish toggle) — avoids resending the whole record from the table.
+export async function patchFinishedProductStockRecord(
+  id: string,
+  data: Partial<
+    Pick<
+      FinishedProductStockRecord,
+      "imageUrl" | "unitOfMeasure" | "lowStockThreshold" | "reservedStock" | "published"
+    >
+  >
+) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    await client.db(DB_NAME).collection("FinishedProductStock").updateOne(
+      { _id: new ObjectId(id), userId: session.id },
+      { $set: { ...data } }
+    );
+    return { success: true };
+  } catch (error) {
+    console.error("patchFinishedProductStockRecord:", error);
+    return { success: false, message: "Failed to update" };
   } finally {
     await client.close();
   }

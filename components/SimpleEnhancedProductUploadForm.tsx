@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   MapPin, Upload, X, Building, FileText, Image as ImageIcon,
   Phone, PackageCheck, Tag, CheckCircle2, Sparkles, Navigation,
+  Check, ChevronLeft, ChevronRight, ClipboardCheck,
 } from "lucide-react";
 
 // Matches view-products page categories exactly
@@ -86,6 +87,76 @@ function FormSection({
   );
 }
 
+// Wizard step definitions — drives the stepper header and section visibility.
+const STEPS = [
+  { id: 1, title: "Details", desc: "Product info" },
+  { id: 2, title: "Media", desc: "Photos" },
+  { id: 3, title: "Location", desc: "Where it is" },
+  { id: 4, title: "Logistics", desc: "Availability & contact" },
+  { id: 5, title: "Review", desc: "Confirm & submit" },
+] as const;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  RealEstate: "Real Estate",
+  Vehicles: "Vehicles",
+  Food: "Food & Dining",
+  Industry: "Industry",
+  OtherProducts: "Other Products",
+};
+
+const prettify = (slug?: string) =>
+  slug ? slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "";
+
+// Horizontal progress stepper. Full labels on sm+, compact dots on mobile.
+function Stepper({ current }: { current: number }) {
+  return (
+    <div className="flex items-center">
+      {STEPS.map((s, i) => {
+        const done = current > s.id;
+        const active = current === s.id;
+        return (
+          <div key={s.id} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center text-center shrink-0">
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors ${
+                  active
+                    ? "bg-[#0097A7] border-[#0097A7] text-white shadow-sm"
+                    : done
+                    ? "bg-[#023E4A] border-[#023E4A] text-white"
+                    : "bg-white border-gray-300 text-gray-400"
+                }`}
+              >
+                {done ? <Check className="w-4 h-4" /> : s.id}
+              </div>
+              <div className="mt-1.5 hidden sm:block">
+                <p className={`text-xs font-semibold leading-tight ${active || done ? "text-[#023E4A]" : "text-gray-400"}`}>
+                  {s.title}
+                </p>
+                <p className="text-[10px] text-gray-400 leading-tight">{s.desc}</p>
+              </div>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className={`flex-1 h-0.5 mx-2 sm:mx-3 rounded transition-colors ${done ? "bg-[#023E4A]" : "bg-gray-200"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Small label/value row used in the Review step summary.
+function ReviewRow({ label, value }: { label: string; value?: React.ReactNode }) {
+  return (
+    <div className="flex justify-between gap-4 py-1.5 text-sm">
+      <span className="text-gray-500 shrink-0">{label}</span>
+      <span className="text-gray-900 font-medium text-right break-words min-w-0">
+        {value || <span className="text-gray-400 font-normal">—</span>}
+      </span>
+    </div>
+  );
+}
+
 interface SimpleEnhancedProductUploadFormProps {
   onSuccess?: () => void;
   initialData?: any;
@@ -112,7 +183,57 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
   const [ownerID, setOwnerID] = useState(initialData?.ownerID || "");
   const [ownerAddress, setOwnerAddress] = useState(initialData?.ownerAddress || "");
   const [isDragging, setIsDragging] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Reads current values of the uncontrolled inputs (used by the Review step).
+  const readSnapshot = () => {
+    const f = formRef.current;
+    const get = (name: string) =>
+      ((f?.elements.namedItem(name) as HTMLInputElement | null)?.value || "").trim();
+    return {
+      title: get("title"),
+      description: get("description"),
+      price: get("price"),
+      province: get("province"),
+      district: get("district"),
+      sector: get("sector"),
+      village: get("village"),
+      zone: get("zone"),
+      latitude: get("latitude"),
+      longitude: get("longitude"),
+    };
+  };
+
+  // Step 1 holds the only required fields — validate before advancing/submitting.
+  const validateDetails = () => {
+    const { title, description } = readSnapshot();
+    if (!title) {
+      setError("Please enter a product title.");
+      return false;
+    }
+    if (!description) {
+      setError("Please enter a product description.");
+      return false;
+    }
+    setError("");
+    return true;
+  };
+
+  const goNext = () => {
+    if (currentStep === 1 && !validateDetails()) {
+      setCurrentStep(1);
+      return;
+    }
+    setError("");
+    setCurrentStep((s) => Math.min(STEPS.length, s + 1));
+  };
+
+  const goBack = () => {
+    setError("");
+    setCurrentStep((s) => Math.max(1, s - 1));
+  };
 
   const processFiles = (files: FileList | File[]) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -179,6 +300,18 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // The form only finalizes on the Review step — earlier steps just advance.
+    if (currentStep < STEPS.length) {
+      goNext();
+      return;
+    }
+
+    if (!validateDetails()) {
+      setCurrentStep(1);
+      return;
+    }
+
     setIsSubmitting(true);
     setError("");
 
@@ -233,6 +366,7 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
         if (!isEditMode) {
           setPreviewImages([]);
           setMainImageIndex(0);
+          setCurrentStep(1);
         }
 
         window.dispatchEvent(
@@ -258,9 +392,21 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+  const snap = currentStep === STEPS.length ? readSnapshot() : null;
 
+  return (
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+
+      {/* ── Stepper header ───────────────────────────────────────── */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-sm">
+        <Stepper current={currentStep} />
+        <p className="sm:hidden mt-3 text-center text-sm font-semibold text-[#023E4A]">
+          Step {currentStep} of {STEPS.length} — {STEPS[currentStep - 1].title}
+        </p>
+      </div>
+
+      {/* ── Step 1 · Product Details ─────────────────────────────── */}
+      <div className={currentStep === 1 ? "" : "hidden"}>
       {/* ── Product Details ─────────────────────────────────────── */}
       <FormSection icon={FileText} title="Product Details" subtitle="The essentials buyers will see first">
         <div className="space-y-5">
@@ -273,7 +419,6 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
               type="text"
               placeholder="Enter product title"
               defaultValue={initialData?.title}
-              required
               className="w-full mt-1.5"
             />
           </div>
@@ -286,7 +431,6 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
               name="description"
               placeholder="Describe your product..."
               defaultValue={initialData?.description}
-              required
               rows={4}
               className="w-full resize-none mt-1.5"
             />
@@ -489,6 +633,10 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
         </div>
       </FormSection>
 
+      </div>
+
+      {/* ── Step 2 · Media ───────────────────────────────────────── */}
+      <div className={currentStep === 2 ? "" : "hidden"}>
       {/* ── Images ───────────────────────────────────────────────── */}
       <FormSection icon={ImageIcon} title="Product Images" subtitle="Clear photos help your listing sell faster">
         <div className="space-y-4">
@@ -565,6 +713,10 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
         </div>
       </FormSection>
 
+      </div>
+
+      {/* ── Step 3 · Location ────────────────────────────────────── */}
+      <div className={currentStep === 3 ? "" : "hidden"}>
       {/* ── Location ─────────────────────────────────────────────── */}
       <FormSection icon={MapPin} title="Location" subtitle="Optional — help buyers find your product">
         <div className="space-y-5">
@@ -643,6 +795,10 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
         </div>
       </FormSection>
 
+      </div>
+
+      {/* ── Step 4 · Logistics ───────────────────────────────────── */}
+      <div className={currentStep === 4 ? "space-y-5" : "hidden"}>
       {/* ── Availability ─────────────────────────────────────────── */}
       <FormSection icon={PackageCheck} title="Availability" subtitle="Control whether buyers can purchase this now">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -771,40 +927,52 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
         </section>
       )}
 
-      {/* ── Submit ───────────────────────────────────────────────── */}
-      <div className="flex gap-3 pt-1">
-        <Button
-          type="submit"
-          className={`flex-1 text-white font-semibold py-3 rounded-xl shadow-sm transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
-            isEditMode
-              ? "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
-              : "bg-gradient-to-r from-[#023E4A] to-[#0097A7] hover:from-[#012830] hover:to-[#007e8c]"
-          }`}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-              {isEditMode ? "Updating..." : "Uploading..."}
-            </span>
-          ) : (
-            <span className="flex items-center justify-center gap-2">
-              {isEditMode ? <CheckCircle2 className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-              {isEditMode ? "Update Product" : "Upload Product"}
-            </span>
-          )}
-        </Button>
-        {isEditMode && (
-          <Button
-            type="button"
-            variant="outline"
-            className="px-6 rounded-xl"
-            onClick={onCancel}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-        )}
+      </div>
+
+      {/* ── Step 5 · Review ──────────────────────────────────────── */}
+      <div className={currentStep === STEPS.length ? "" : "hidden"}>
+        <FormSection icon={ClipboardCheck} title="Review & Submit" subtitle="Double-check everything before publishing">
+          <div className="space-y-5">
+            {previewImages.length > 0 && (
+              <div className="flex items-center gap-4">
+                <img
+                  src={previewImages[mainImageIndex] || previewImages[0]}
+                  alt="Main product"
+                  className="w-24 h-24 rounded-xl object-cover border border-gray-200 shrink-0"
+                />
+                <div className="text-sm text-gray-600 min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{snap?.title || "Untitled product"}</p>
+                  <p>{previewImages.length} photo{previewImages.length > 1 ? "s" : ""} attached</p>
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-xl border border-gray-200 divide-y divide-gray-100 px-4">
+              <ReviewRow label="Title" value={snap?.title} />
+              <ReviewRow label="Description" value={snap?.description} />
+              <ReviewRow label="Category" value={CATEGORY_LABELS[category] || category} />
+              {subcategory && <ReviewRow label="Subcategory" value={prettify(subcategory)} />}
+              {propertyType && <ReviewRow label="Type" value={prettify(propertyType)} />}
+              <ReviewRow label="Price" value={snap?.price ? `Frw ${snap.price}` : undefined} />
+              <ReviewRow
+                label="Location"
+                value={[snap?.sector, snap?.district, snap?.province].filter(Boolean).join(", ")}
+              />
+              <ReviewRow label="Availability" value={isAvailable ? "Available" : "Unavailable / Booked"} />
+              <ReviewRow label="Contact" value={contactNumber} />
+              <ReviewRow label="WhatsApp" value={whatsappNumber} />
+              {(category === "RealEstate" || category === "Vehicles") && (
+                <ReviewRow label="Owner" value={ownerFullName} />
+              )}
+            </div>
+
+            {previewImages.length === 0 && (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                No photos added. Listings with photos perform much better — go back to Media to add some.
+              </p>
+            )}
+          </div>
+        </FormSection>
       </div>
 
       {/* Success Message */}
@@ -822,6 +990,68 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
           {error}
         </div>
       )}
+
+      {/* ── Navigation ───────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 pt-1">
+        {currentStep > 1 ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="px-5 rounded-xl"
+            onClick={goBack}
+            disabled={isSubmitting}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" /> Back
+          </Button>
+        ) : (
+          isEditMode && (
+            <Button
+              type="button"
+              variant="outline"
+              className="px-5 rounded-xl"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+          )
+        )}
+
+        <div className="flex-1" />
+
+        {currentStep < STEPS.length ? (
+          <Button
+            type="button"
+            onClick={goNext}
+            disabled={isSubmitting}
+            className="px-6 py-3 rounded-xl text-white font-semibold bg-gradient-to-r from-[#023E4A] to-[#0097A7] hover:from-[#012830] hover:to-[#007e8c] shadow-sm hover:shadow-md transition-all"
+          >
+            Next <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className={`px-8 py-3 rounded-xl text-white font-semibold shadow-sm transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
+              isEditMode
+                ? "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
+                : "bg-gradient-to-r from-[#023E4A] to-[#0097A7] hover:from-[#012830] hover:to-[#007e8c]"
+            }`}
+          >
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                {isEditMode ? "Updating..." : "Uploading..."}
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                {isEditMode ? <CheckCircle2 className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+                {isEditMode ? "Update Product" : "Publish Listing"}
+              </span>
+            )}
+          </Button>
+        )}
+      </div>
     </form>
   );
 }
