@@ -8,7 +8,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SimpleEnhancedProductCard from "@/components/SimpleEnhancedProductCard";
 import ShoppingCartComponent from "@/components/ShoppingCart";
-import { Package, Star, Users, Filter, Home, Building, UtensilsCrossed, ShoppingBasket, ChefHat, Truck, Croissant, Soup, Factory, Layers, BoxesIcon, Car, ShoppingCart, ArrowRight } from "lucide-react";
+import { Package, Star, Users, Filter, Home, Building, UtensilsCrossed, ShoppingBasket, ChefHat, Truck, Croissant, Soup, Factory, BoxesIcon, Car, ShoppingCart, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -206,7 +206,6 @@ function ViewProductsContent() {
       reSale: by("RealEstate", "for-sale"),
       vehRent: by("Vehicles", "for-rent"),
       vehSale: by("Vehicles", "for-sale"),
-      indRaw: by("Industry", "raw-materials"),
       indFinished: by("Industry", "finished-products"),
       food: {
         restaurant: by("Food", "restaurant"),
@@ -327,11 +326,6 @@ function ViewProductsContent() {
           <div>
             <GroupHeader icon={Factory} title="Industry" accent="text-indigo-600" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <CategoryCard
-                icon={Layers} gradient="from-slate-500 to-slate-700" accent="text-slate-600"
-                title="Raw Materials" desc="Industrial raw materials & inputs"
-                count={counts.indRaw} unit="items" href="/industry/raw-materials"
-              />
               <CategoryCard
                 icon={BoxesIcon} gradient="from-indigo-500 to-blue-600" accent="text-indigo-600"
                 title="Finished Products" desc="Manufactured & finished goods"

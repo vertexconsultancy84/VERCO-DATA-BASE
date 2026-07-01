@@ -645,10 +645,19 @@ export default function IndustryPriceCalculator({
                 <Plus className="w-3 h-3" /> Add feed
               </button>
             </div>
-            <div className="grid grid-cols-2 bg-black text-white">
-              <span className="px-4 py-2 font-bold text-sm">Total feeds</span>
-              <span className="px-3 py-2 font-bold text-sm text-right">
+            {/* Sub-total of just the feeds listed above */}
+            <div className="grid grid-cols-2 border-t border-gray-200 bg-gray-50 items-center">
+              <span className="px-4 py-2 text-sm text-gray-600">Feeds sub-total</span>
+              <span className="px-3 py-2 text-sm font-semibold text-gray-700 text-right">
                 Frw {feedsTotal.toLocaleString()}
+              </span>
+            </div>
+            {/* Total feeds = product cost = every calculation above (processed value + all expenses + feeds).
+                This is the cost base added to the desired profit to compute the selling price. */}
+            <div className="grid grid-cols-2 bg-black text-white">
+              <span className="px-4 py-2 font-bold text-sm">Total feeds (Product cost)</span>
+              <span className="px-3 py-2 font-bold text-sm text-right">
+                Frw {totalFeedsPrice.toLocaleString()}
               </span>
             </div>
           </div>

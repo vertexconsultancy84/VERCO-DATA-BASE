@@ -4,6 +4,7 @@ import { MongoClient, ObjectId } from "mongodb";
 import dns from "dns";
 import { getUserSession } from "./auth";
 import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
 
 const DB_NAME = "VERTEX_DB";
 
@@ -492,6 +493,8 @@ export interface RawMaterialRecord {
   customExpenses: CustomExpense[];
   totalCost: number;
   costPerUnit: number;
+  desiredProfit?: number;     // profit to add on top of cost → selling price
+  sellingPrice?: number;      // totalCost + desiredProfit (persisted on save)
   currentStock: number;
   createdAt: string;
 }
@@ -545,6 +548,8 @@ export async function getRawMaterialRecords(): Promise<RawMaterialRecord[]> {
       customExpenses: (d.customExpenses ?? []) as CustomExpense[],
       totalCost: d.totalCost as number,
       costPerUnit: d.costPerUnit as number,
+      desiredProfit: d.desiredProfit as number | undefined,
+      sellingPrice: d.sellingPrice as number | undefined,
       currentStock: d.currentStock as number,
       createdAt: (d.createdAt as Date).toISOString(),
     }));
@@ -569,6 +574,33 @@ export async function updateRawMaterialCostPerUnit(id: string, costPerUnit: numb
     return { success: true };
   } catch (error) {
     console.error("updateRawMaterialCostPerUnit:", error);
+    return { success: false, message: "Failed to update" };
+  } finally {
+    await client.close();
+  }
+}
+
+// Save the desired profit on a raw material and roll it into the selling price
+// (sellingPrice = totalCost + desiredProfit). Returns the new selling price.
+export async function updateRawMaterialDesiredProfit(id: string, desiredProfit: number) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    const col = client.db(DB_NAME).collection("RawMaterialStock");
+    const record = await col.findOne({ _id: new ObjectId(id), userId: session.id });
+    if (!record) return { success: false, message: "Record not found" };
+
+    const sellingPrice = (record.totalCost as number) + desiredProfit;
+    await col.updateOne(
+      { _id: new ObjectId(id), userId: session.id },
+      { $set: { desiredProfit, sellingPrice } }
+    );
+    return { success: true, sellingPrice };
+  } catch (error) {
+    console.error("updateRawMaterialDesiredProfit:", error);
     return { success: false, message: "Failed to update" };
   } finally {
     await client.close();
@@ -664,7 +696,9 @@ export interface FinishedProductStockRecord {
   unitOfMeasure?: string;     // Piece, Kg, Box, …
   lowStockThreshold?: number; // alert level for current stock
   reservedStock?: number;     // units held for existing orders
+  leadTimeDays?: number;      // production/restock lead time, used for smart reorder point
   published?: boolean;        // manager has published the product (Available)
+  publishedProductId?: string; // linked marketplace Product created on publish
   createdAt: string;
 }
 
@@ -723,7 +757,9 @@ export async function getFinishedProductStockRecords(): Promise<FinishedProductS
       unitOfMeasure: d.unitOfMeasure as string | undefined,
       lowStockThreshold: d.lowStockThreshold as number | undefined,
       reservedStock: d.reservedStock as number | undefined,
+      leadTimeDays: d.leadTimeDays as number | undefined,
       published: d.published as boolean | undefined,
+      publishedProductId: d.publishedProductId ? String(d.publishedProductId) : undefined,
       createdAt: (d.createdAt as Date).toISOString(),
     }));
   } catch {
@@ -740,7 +776,7 @@ export async function patchFinishedProductStockRecord(
   data: Partial<
     Pick<
       FinishedProductStockRecord,
-      "imageUrl" | "unitOfMeasure" | "lowStockThreshold" | "reservedStock" | "published"
+      "imageUrl" | "unitOfMeasure" | "lowStockThreshold" | "reservedStock" | "leadTimeDays" | "published"
     >
   >
 ) {
@@ -758,6 +794,101 @@ export async function patchFinishedProductStockRecord(
   } catch (error) {
     console.error("patchFinishedProductStockRecord:", error);
     return { success: false, message: "Failed to update" };
+  } finally {
+    await client.close();
+  }
+}
+
+// Publish / unpublish a finished-product stock record to the public marketplace.
+// Publishing creates (or re-shows) a real Product with category Industry /
+// subcategory finished-products so it appears on the home page and view-products.
+// Unpublishing hides the linked Product but keeps it for re-publishing later.
+export async function publishFinishedProductToMarketplace(
+  recordId: string,
+  publish: boolean
+): Promise<{ success: boolean; published?: boolean; message?: string }> {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    const col = client.db(DB_NAME).collection("FinishedProductStock");
+    const record = await col.findOne({ _id: new ObjectId(recordId), userId: session.id });
+    if (!record) return { success: false, message: "Record not found" };
+
+    const linkedId: string | undefined = record.publishedProductId
+      ? String(record.publishedProductId)
+      : undefined;
+
+    // Does the linked product still exist?
+    const existing = linkedId
+      ? await prisma.product.findUnique({ where: { id: linkedId }, select: { id: true } })
+      : null;
+
+    let productId = existing?.id;
+
+    if (publish) {
+      const image = (record.imageUrl as string | undefined) || undefined;
+      if (existing) {
+        // Re-show and refresh the key fields from the current record
+        await prisma.product.update({
+          where: { id: existing.id },
+          data: {
+            title: record.productName as string,
+            price: (record.costPerUnit as number) ?? null,
+            available: true,
+            hidden: false,
+          },
+        });
+      } else {
+        // Create a fresh marketplace listing linked back to this record
+        const created = await prisma.product.create({
+          data: {
+            title: record.productName as string,
+            description: `${record.productName as string} — finished product`,
+            price: (record.costPerUnit as number) ?? null,
+            category: "Industry" as any,
+            subcategory: "finished-products",
+            available: true,
+            hidden: false,
+            user: { connect: { id: session.id } },
+            media: {
+              create: {
+                images: image ? [image] : [],
+                videos: [],
+                mainImage: image ?? null,
+                mainVideo: null,
+              },
+            },
+          },
+          select: { id: true },
+        });
+        productId = created.id;
+      }
+    } else if (existing) {
+      // Unpublish → hide from public listings but keep the record link
+      await prisma.product.update({
+        where: { id: existing.id },
+        data: { available: false, hidden: true },
+      });
+    }
+
+    // Persist the publish state + link on the stock record
+    await col.updateOne(
+      { _id: new ObjectId(recordId), userId: session.id },
+      { $set: { published: publish, ...(productId ? { publishedProductId: productId } : {}) } }
+    );
+
+    // Refresh the public surfaces so the change shows immediately
+    revalidatePath("/");
+    revalidatePath("/view-products");
+    revalidatePath("/industry/finished-products");
+
+    return { success: true, published: publish };
+  } catch (error) {
+    console.error("publishFinishedProductToMarketplace:", error);
+    return { success: false, message: "Failed to update publish state" };
   } finally {
     await client.close();
   }

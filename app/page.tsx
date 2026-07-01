@@ -155,7 +155,6 @@ export default function HomePage() {
         forSale: vehicleProducts.filter(p => p.subcategory === 'for-sale')
       },
       industry: {
-        rawMaterials: industryProducts.filter(p => p.subcategory === 'raw-materials'),
         finishedProducts: industryProducts.filter(p => p.subcategory === 'finished-products')
       },
       other: otherProducts

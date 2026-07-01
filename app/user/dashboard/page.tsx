@@ -8,7 +8,7 @@ import SimpleEnhancedProductUploadForm from "@/components/SimpleEnhancedProductU
 import Header from "@/components/Header";
 import {
   Package, Upload, TrendingUp, Users, ArrowRight, Home, Edit, Trash2, Eye,
-  CheckCircle, Car, Utensils, Factory, Building, Layers, BoxesIcon,
+  CheckCircle, Car, Utensils, Factory, Building, BoxesIcon,
   ShoppingBasket, ChefHat, Truck, Croissant, Coffee, ShoppingBag, ShoppingCart,
 } from "lucide-react";
 import Link from "next/link";
@@ -72,7 +72,6 @@ const CATEGORY_META: Record<string, {
     icon: Factory,
     quickLinks: [
       { label: "Industry Dashboard", href: "/industry/dashboard", icon: Factory },
-      { label: "Raw Materials", href: "/industry/raw-materials", icon: Layers },
       { label: "Finished Products", href: "/industry/finished-products", icon: BoxesIcon },
     ],
   },

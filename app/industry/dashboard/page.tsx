@@ -10,7 +10,7 @@ import Header from "@/components/Header";
 import Link from "next/link";
 import {
   Factory, Calculator, Upload, Package, Edit, Trash2, Eye,
-  CheckCircle, ArrowRight, Layers, BoxesIcon, TrendingUp, ShoppingBag, BarChart2, Receipt,
+  CheckCircle, ArrowRight, BoxesIcon, TrendingUp, ShoppingBag, BarChart2, Receipt,
 } from "lucide-react";
 
 interface Product {
@@ -198,12 +198,6 @@ function IndustryDashboardContent() {
       {/* Quick links */}
       <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
         <div className="bg-cyan-50 rounded-xl p-4 flex flex-wrap gap-3">
-          <Link
-            href="/industry/raw-materials"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:shadow-sm transition-all"
-          >
-            <Layers className="w-4 h-4" /> Raw Materials
-          </Link>
           <Link
             href="/industry/finished-products"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:shadow-sm transition-all"

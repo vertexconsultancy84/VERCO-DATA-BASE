@@ -42,7 +42,6 @@ const foodSubcategories = {
 };
 
 const industrySubcategories = {
-  "raw-materials": "Raw Materials",
   "finished-products": "Finished Products"
 };
 
@@ -587,7 +586,7 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-sm text-gray-500 mt-1">Select whether this is a raw material or finished product</p>
+              <p className="text-sm text-gray-500 mt-1">Industry finished product</p>
               <input type="hidden" name="subcategory" value={subcategory} />
             </div>
           )}
