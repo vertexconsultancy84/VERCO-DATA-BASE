@@ -177,9 +177,17 @@ export default function StockInventoryDashboard({ productsSlot }: { productsSlot
   const deadStockCount = deadStockItems.length;
   const deadStockValue = deadStockItems.reduce((s, i) => s + i.current * i.unitCost, 0);
   const totalUnits = items.reduce((s, i) => s + Math.max(0, i.current), 0);
-  const totalIn = finishedMovements.filter((m) => m.movement === "in").reduce((s, m) => s + m.quantity, 0);
-  const totalOut = finishedMovements.filter((m) => m.movement === "out").reduce((s, m) => s + m.quantity, 0);
-  const incomingCount = finishedMovements.filter((m) => m.movement === "in").length;
+  // units logged as explicit IN / OUT movements (restocks & sales)
+  const movementIn = finishedMovements.filter((m) => m.movement === "in").reduce((s, m) => s + m.quantity, 0);
+  const movementOut = finishedMovements.filter((m) => m.movement === "out").reduce((s, m) => s + m.quantity, 0);
+  // each finished product's initial saved quantity is its first incoming stock,
+  // so incoming = initial intakes + any later Stock IN movements
+  const initialIn = finished.reduce((s, f) => s + Math.max(0, f.quantityProduced || 0), 0);
+  const totalIn = initialIn + movementIn;   // all units that have come in
+  const totalOut = movementOut;             // all units that have gone out
+  const incomingCount =
+    finished.filter((f) => (f.quantityProduced || 0) > 0).length +
+    finishedMovements.filter((m) => m.movement === "in").length;
   const outgoingCount = finishedMovements.filter((m) => m.movement === "out").length;
   const totalReserved = items.reduce((s, i) => s + i.reserved, 0);
   const stockValue = items.reduce((s, i) => s + Math.max(0, i.current) * i.unitCost, 0);

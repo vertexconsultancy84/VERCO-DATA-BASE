@@ -12,7 +12,6 @@ import {
   saveRawMaterialRecord,
   updateRawMaterialRecord,
   updateRawMaterialCostPerUnit,
-  updateRawMaterialDesiredProfit,
   deleteRawMaterialRecord,
   getFinishedProductStockRecords,
   saveFinishedProductStockRecord,
@@ -38,10 +37,9 @@ import StockInventoryDashboard from "@/components/StockInventoryDashboard";
 const frw = (n: number) =>
   "Frw " + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// A raw material's selling price (cost + desired profit). Finished products are
-// costed from this so the raw materials' profit flows into the finished product.
-const rawSellingPrice = (r: RawMaterialRecord) =>
-  r.sellingPrice ?? r.totalCost + (r.desiredProfit ?? 0);
+// A raw material's value is simply its total cost. Finished products are costed
+// from this so the raw materials' cost flows into the finished product.
+const rawSellingPrice = (r: RawMaterialRecord) => r.totalCost;
 
 const UNITS = ["Kg", "Liter", "Piece", "Meter", "Ton", "Box", "Bag", "Bottle", "Other"];
 
@@ -477,7 +475,6 @@ function CustomExpensesEditor({ expenses, onChange, accentColor }: {
 const RAW_DEFAULTS = {
   materialName: "", quantityPurchased: "", unit: "Kg",
   purchasePrice: "", tax: "", transportCost: "", otherExpenses: "", currentStock: "",
-  desiredProfit: "",
 };
 
 function RawMaterialsTab() {
@@ -495,10 +492,6 @@ function RawMaterialsTab() {
   const [editSaving, setEditSaving] = useState(false);
   // inline cost-per-unit editing: map of recordId → draft string value
   const [cpuDraft, setCpuDraft] = useState<Record<string, string>>({});
-  // inline desired-profit editing: map of recordId → draft string value
-  const [dpDraft, setDpDraft] = useState<Record<string, string>>({});
-  const [dpSaving, setDpSaving] = useState<Record<string, boolean>>({});
-  const [dpSaved, setDpSaved] = useState<Record<string, boolean>>({});
   const [movements, setMovements] = useState<StockMovement[]>([]);
   // materials available in the Stock of Materials list, to pick from
   const [stockItems, setStockItems] = useState<RawMaterialStockItem[]>([]);
@@ -567,16 +560,6 @@ function RawMaterialsTab() {
     return qty > 0 ? totalCost / qty : 0;
   }, [totalCost, form.quantityPurchased]);
 
-  // desired profit added on top of the cost → selling price
-  const sellingPrice = useMemo(
-    () => totalCost + n(form.desiredProfit),
-    [totalCost, form.desiredProfit]
-  );
-  const sellingPricePerUnit = useMemo(() => {
-    const qty = n(form.quantityPurchased);
-    return qty > 0 ? sellingPrice / qty : 0;
-  }, [sellingPrice, form.quantityPurchased]);
-
   const breakdownRows: BreakdownRow[] = [
     { label: "Purchase Price", amount: n(form.purchasePrice) },
     { label: "Tax", amount: n(form.tax) },
@@ -608,8 +591,6 @@ function RawMaterialsTab() {
       customExpenses,
       totalCost,
       costPerUnit,
-      desiredProfit: n(form.desiredProfit),
-      sellingPrice,
       currentStock: quantityToUse,
     });
     if (result.success) {
@@ -634,22 +615,6 @@ function RawMaterialsTab() {
     setRecords((prev) => prev.filter((r) => r.id !== id));
   };
 
-  // Commit the edited desired profit for a record and roll it into the selling price.
-  const saveDesiredProfit = async (r: RawMaterialRecord) => {
-    const val = parseFloat(dpDraft[r.id] ?? String(r.desiredProfit ?? 0));
-    if (isNaN(val)) return;
-    setDpSaving((p) => ({ ...p, [r.id]: true }));
-    const res = await updateRawMaterialDesiredProfit(r.id, val);
-    setDpSaving((p) => { const x = { ...p }; delete x[r.id]; return x; });
-    if (res.success) {
-      const sellingPrice = res.sellingPrice ?? r.totalCost + val;
-      setRecords((prev) => prev.map((rec) => rec.id === r.id ? { ...rec, desiredProfit: val, sellingPrice } : rec));
-      setDpDraft((p) => { const x = { ...p }; delete x[r.id]; return x; });
-      setDpSaved((p) => ({ ...p, [r.id]: true }));
-      setTimeout(() => setDpSaved((p) => { const x = { ...p }; delete x[r.id]; return x; }), 2000);
-    }
-  };
-
   const startEdit = (r: RawMaterialRecord) => {
     setEditingId(r.id);
     setExpandedId(null);
@@ -662,7 +627,6 @@ function RawMaterialsTab() {
       transportCost: String(r.transportCost),
       otherExpenses: String(r.otherExpenses),
       currentStock: String(r.currentStock),
-      desiredProfit: r.desiredProfit != null ? String(r.desiredProfit) : "",
     });
     setEditCustomExpenses(r.customExpenses ?? []);
   };
@@ -685,8 +649,6 @@ function RawMaterialsTab() {
       customExpenses: editCustomExpenses,
       totalCost,
       costPerUnit,
-      desiredProfit: n(editForm.desiredProfit),
-      sellingPrice: totalCost + n(editForm.desiredProfit),
       currentStock: n(editForm.currentStock),
     });
     setEditSaving(false);
@@ -719,8 +681,6 @@ function RawMaterialsTab() {
         { header: "Extra", width: 14, align: "right" },
         { header: "Total Cost", width: 18, align: "right" },
         { header: "Cost/Unit", width: 16, align: "right" },
-        { header: "Profit", width: 16, align: "right" },
-        { header: "Selling Price", width: 18, align: "right" },
         { header: "Date", width: 18 },
       ],
       rows: records.map((r, i) => [
@@ -736,8 +696,6 @@ function RawMaterialsTab() {
         frw((r.customExpenses ?? []).reduce((s, e) => s + e.amount, 0)),
         frw(r.totalCost),
         frw(r.costPerUnit),
-        frw(r.desiredProfit ?? 0),
-        frw(r.sellingPrice ?? r.totalCost + (r.desiredProfit ?? 0)),
         new Date(r.createdAt).toLocaleDateString(),
       ]),
     });
@@ -844,12 +802,6 @@ function RawMaterialsTab() {
                 onChange={(e) => f("otherExpenses", e.target.value)} placeholder="Loading, storage, etc."
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-emerald-700 mb-1">Desired Profit (Frw)</label>
-              <input type="number" min="0" step="any" value={form.desiredProfit}
-                onChange={(e) => f("desiredProfit", e.target.value)} placeholder="Profit to add on cost"
-                className="w-full border border-emerald-300 bg-emerald-50/40 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-            </div>
           </div>
 
           <div className="border-t border-slate-200 pt-4">
@@ -868,14 +820,6 @@ function RawMaterialsTab() {
                 <div className="bg-slate-700 rounded-lg p-3">
                   <p className="text-xs text-slate-300">Cost Per Unit</p>
                   <p className="text-base font-bold text-white">{frw(costPerUnit)}</p>
-                </div>
-                <div className="bg-white border border-emerald-200 rounded-lg p-3">
-                  <p className="text-xs text-emerald-600">Desired Profit</p>
-                  <p className="text-base font-bold text-emerald-700">{frw(n(form.desiredProfit))}</p>
-                </div>
-                <div className="bg-emerald-600 rounded-lg p-3">
-                  <p className="text-xs text-emerald-100">Selling Price {sellingPricePerUnit > 0 && <span className="font-normal">({frw(sellingPricePerUnit)}/unit)</span>}</p>
-                  <p className="text-base font-bold text-white">{frw(sellingPrice)}</p>
                 </div>
               </div>
             </div>
@@ -903,7 +847,7 @@ function RawMaterialsTab() {
           <table className="w-full text-xs border-collapse min-w-[960px]">
             <thead>
               <tr className="bg-slate-700 text-white">
-                {["","#","Material Name","Qty Used from Stock","Current Stock","Unit","Purchase Price","Tax","Transport","Other","Extra","Total Cost","Cost/Unit ✎","Desired Profit ✎","Selling Price","Date",""].map((h, i) => (
+                {["","#","Material Name","Qty Used from Stock","Current Stock","Unit","Purchase Price","Tax","Transport","Other","Extra","Total Cost","Cost/Unit ✎","Date",""].map((h, i) => (
                   <th key={i} className="px-3 py-2.5 text-left font-semibold whitespace-nowrap border-r border-slate-600 last:border-r-0">{h}</th>
                 ))}
               </tr>
@@ -959,49 +903,6 @@ function RawMaterialsTab() {
                         <span className="text-emerald-400 text-[10px] shrink-0">✎</span>
                       </div>
                     </td>
-                    {/* Desired profit (editable) + explicit Save Changes */}
-                    <td className="p-1 bg-emerald-50/60" onClick={(e) => e.stopPropagation()}>
-                      {(() => {
-                        const draftVal = dpDraft[r.id];
-                        const dirty = draftVal !== undefined && parseFloat(draftVal || "0") !== (r.desiredProfit ?? 0);
-                        return (
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              min="0"
-                              step="any"
-                              value={draftVal ?? (r.desiredProfit ?? 0)}
-                              onChange={(e) => setDpDraft((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                              onKeyDown={(e) => { if (e.key === "Enter") saveDesiredProfit(r); }}
-                              className="w-20 text-right font-bold text-emerald-700 bg-white border border-emerald-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-xs"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => saveDesiredProfit(r)}
-                              disabled={dpSaving[r.id] || !dirty}
-                              title="Save changes (add profit to selling price)"
-                              className={`shrink-0 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-1 rounded transition-colors ${
-                                dpSaved[r.id]
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : dirty
-                                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                  : "bg-gray-100 text-gray-400 cursor-default"
-                              }`}
-                            >
-                              {dpSaving[r.id]
-                                ? "…"
-                                : dpSaved[r.id]
-                                ? <><CheckCircle2 className="w-3 h-3" /> Saved</>
-                                : <><Check className="w-3 h-3" /> Save</>}
-                            </button>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    {/* Selling price = total cost + desired profit (persisted) */}
-                    <td className="px-3 py-2 text-right font-bold text-emerald-700 whitespace-nowrap">
-                      {frw(r.sellingPrice ?? r.totalCost + (r.desiredProfit ?? 0))}
-                    </td>
                     <td className="px-3 py-2 text-gray-400 whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</td>
                     <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
@@ -1020,7 +921,7 @@ function RawMaterialsTab() {
                   {/* Edit row */}
                   {editingId === r.id && (
                     <tr key={`${r.id}-edit`} className="bg-blue-50 border-b border-blue-200">
-                      <td colSpan={17} className="px-6 py-5">
+                      <td colSpan={15} className="px-6 py-5">
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-bold text-blue-800 uppercase tracking-wide">Edit Record</p>
@@ -1071,11 +972,6 @@ function RawMaterialsTab() {
                               <input type="number" min="0" step="any" value={editForm.otherExpenses} onChange={(e) => ef("otherExpenses", e.target.value)}
                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
                             </div>
-                            <div>
-                              <label className="block text-xs font-medium text-emerald-700 mb-1">Desired Profit (Frw)</label>
-                              <input type="number" min="0" step="any" value={editForm.desiredProfit} onChange={(e) => ef("desiredProfit", e.target.value)}
-                                className="w-full border border-emerald-300 bg-emerald-50/40 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                            </div>
                           </div>
                           <CustomExpensesEditor expenses={editCustomExpenses} onChange={setEditCustomExpenses} accentColor="slate" />
                           <div className="flex gap-2 justify-end pt-2 border-t border-blue-200">
@@ -1094,7 +990,7 @@ function RawMaterialsTab() {
                   {/* Expand row */}
                   {expandedId === r.id && (
                     <tr key={`${r.id}-detail`} className="bg-slate-50 border-b border-slate-200">
-                      <td colSpan={17} className="px-6 py-5">
+                      <td colSpan={15} className="px-6 py-5">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                           <div>
                             <p className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">Cost Per Unit Breakdown</p>
@@ -1110,19 +1006,15 @@ function RawMaterialsTab() {
                               totalCost={r.totalCost}
                               accentClass="border-slate-200"
                             />
-                            {/* Profit → selling price */}
-                            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                            {/* Total cost summary */}
+                            <div className="mt-3 grid grid-cols-2 gap-2 text-center">
                               <div className="bg-white border border-slate-200 rounded-lg p-2">
                                 <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total Cost</p>
                                 <p className="text-sm font-bold text-slate-800">{frw(r.totalCost)}</p>
                               </div>
-                              <div className="bg-white border border-emerald-200 rounded-lg p-2">
-                                <p className="text-[10px] text-emerald-600 uppercase tracking-wide">Desired Profit</p>
-                                <p className="text-sm font-bold text-emerald-700">{frw(r.desiredProfit ?? 0)}</p>
-                              </div>
-                              <div className="bg-emerald-600 rounded-lg p-2">
-                                <p className="text-[10px] text-emerald-100 uppercase tracking-wide">Selling Price</p>
-                                <p className="text-sm font-bold text-white">{frw(r.sellingPrice ?? r.totalCost + (r.desiredProfit ?? 0))}</p>
+                              <div className="bg-slate-700 rounded-lg p-2">
+                                <p className="text-[10px] text-slate-300 uppercase tracking-wide">Cost Per Unit</p>
+                                <p className="text-sm font-bold text-white">{frw(r.costPerUnit)}</p>
                               </div>
                             </div>
                           </div>
@@ -1287,7 +1179,7 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
     const next = !r.published;
     // optimistic
     setRecords((prev) => prev.map((x) => (x.id === r.id ? { ...x, published: next } : x)));
-    const res = await publishFinishedProductToMarketplace(r.id, next);
+    const res = await publishFinishedProductToMarketplace(r.id, next, variant);
     if (!res.success) {
       // roll back on failure
       setRecords((prev) => prev.map((x) => (x.id === r.id ? { ...x, published: r.published } : x)));
@@ -1614,7 +1506,7 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
                         className="accent-teal-600 w-4 h-4 shrink-0" />
                       <span className="font-medium text-gray-800 flex-1 truncate" title={r.materialName}>{r.materialName}</span>
                       <span className="text-gray-500 whitespace-nowrap">{r.quantityPurchased.toLocaleString()} {r.unit}</span>
-                      <span className="font-semibold text-teal-700 whitespace-nowrap w-28 text-right" title="Selling price (cost + profit)">{frw(rawSellingPrice(r))}</span>
+                      <span className="font-semibold text-teal-700 whitespace-nowrap w-28 text-right" title="Total cost">{frw(rawSellingPrice(r))}</span>
                     </label>
                   );
                 })}

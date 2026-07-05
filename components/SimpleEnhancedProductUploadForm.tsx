@@ -71,17 +71,20 @@ function FormSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-gradient-to-b from-gray-50/80 to-white p-5 sm:p-6 shadow-sm">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#023E4A] to-[#0097A7] flex items-center justify-center shrink-0 shadow-sm">
+    <section className="rounded-2xl border border-[#0097A7]/30 bg-gradient-to-r from-[#023E4A] to-[#0097A7] p-4 sm:p-5 shadow-md">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-white/15 ring-1 ring-white/25 flex items-center justify-center shrink-0 shadow-sm">
           <Icon className="w-5 h-5 text-white" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-bold text-gray-900 leading-tight">{title}</h3>
-          {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+          <h3 className="font-bold text-white leading-tight">{title}</h3>
+          {subtitle && <p className="text-xs text-white/80 mt-0.5">{subtitle}</p>}
         </div>
       </div>
-      {children}
+      {/* White content panel keeps every label & input crisp on the teal frame */}
+      <div className="rounded-xl bg-white p-4 sm:p-5 shadow-sm">
+        {children}
+      </div>
     </section>
   );
 }
@@ -889,16 +892,16 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
 
       {/* ── Owner Information (Real Estate & Vehicles) ───────────── */}
       {(category === "RealEstate" || category === "Vehicles") && (
-        <section className="rounded-2xl border border-blue-200 bg-gradient-to-b from-blue-50 to-white p-5 sm:p-6 shadow-sm space-y-4">
+        <section className="rounded-2xl border border-[#0097A7]/30 bg-gradient-to-r from-[#023E4A] to-[#0097A7] p-5 sm:p-6 shadow-md space-y-5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shrink-0 shadow-sm">
+            <div className="w-11 h-11 rounded-xl bg-white/15 ring-1 ring-white/25 flex items-center justify-center shrink-0 shadow-sm">
               <Building className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-blue-900 leading-tight">
+              <h3 className="font-bold text-white leading-tight">
                 Owner Information (For {category === "Vehicles" ? "Vehicle" : "Lease"} Agreement)
               </h3>
-              <p className="text-xs text-blue-600 mt-0.5">
+              <p className="text-xs text-white/80 mt-0.5">
                 Shown to clients via “Owner Info” to help them fill the{" "}
                 {category === "Vehicles" ? "booking/purchase" : "lease"} contract.
               </p>
@@ -906,22 +909,29 @@ export default function SimpleEnhancedProductUploadForm({ onSuccess, initialData
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="ownerFullName">Owner Full Name</Label>
-              <Input id="ownerFullName" name="ownerFullName" value={ownerFullName} onChange={(e) => setOwnerFullName(e.target.value)} placeholder="Full legal name of the owner" className="bg-white" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ownerNationality">Owner Nationality</Label>
-              <Input id="ownerNationality" name="ownerNationality" value={ownerNationality} onChange={(e) => setOwnerNationality(e.target.value)} placeholder="e.g., Rwandan" className="bg-white" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ownerID">Owner National ID / Passport No</Label>
-              <Input id="ownerID" name="ownerID" value={ownerID} onChange={(e) => setOwnerID(e.target.value)} placeholder="ID number" className="bg-white" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ownerAddress">Owner Current Address</Label>
-              <Input id="ownerAddress" name="ownerAddress" value={ownerAddress} onChange={(e) => setOwnerAddress(e.target.value)} placeholder="Owner's current physical address" className="bg-white" />
-            </div>
+            {[
+              { id: "ownerFullName", label: "Owner Full Name", placeholder: "Full legal name of the owner", value: ownerFullName, set: setOwnerFullName },
+              { id: "ownerNationality", label: "Owner Nationality", placeholder: "e.g., Rwandan", value: ownerNationality, set: setOwnerNationality },
+              { id: "ownerID", label: "Owner National ID / Passport No", placeholder: "ID number", value: ownerID, set: setOwnerID },
+              { id: "ownerAddress", label: "Owner Current Address", placeholder: "Owner's current physical address", value: ownerAddress, set: setOwnerAddress },
+            ].map((field) => (
+              <div key={field.id} className="rounded-xl border border-[#0097A7]/15 bg-white p-3.5 shadow-sm transition-colors hover:border-[#0097A7]/40">
+                <Label
+                  htmlFor={field.id}
+                  className="inline-block mb-1.5 rounded-md bg-[#023E4A]/5 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#023E4A]"
+                >
+                  {field.label}
+                </Label>
+                <Input
+                  id={field.id}
+                  name={field.id}
+                  value={field.value}
+                  onChange={(e) => field.set(e.target.value)}
+                  placeholder={field.placeholder}
+                  className="bg-cyan-50/60 border-[#0097A7]/30 placeholder:text-gray-400 focus-visible:bg-white focus-visible:border-[#0097A7] focus-visible:ring-[#0097A7]/30"
+                />
+              </div>
+            ))}
           </div>
         </section>
       )}

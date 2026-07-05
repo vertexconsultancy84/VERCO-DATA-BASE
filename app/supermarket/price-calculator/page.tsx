@@ -10,8 +10,8 @@ import { Calculator, ArrowLeft } from "lucide-react";
 export default function SupermarketPriceCalculatorPage() {
   const router = useRouter();
 
-  const handlePriceConfirmed = (price: number) => {
-    router.push(`/supermarket/dashboard?tab=upload&price=${price}`);
+  const handlePriceConfirmed = (_price: number) => {
+    router.push(`/supermarket/dashboard`);
   };
 
   return (

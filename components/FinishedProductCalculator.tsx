@@ -4,7 +4,9 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   ShoppingCart, Percent,
   AlertCircle, CheckCircle2, TrendingUp, TrendingDown, Plus, Trash2, Save, History, Pencil, Download,
+  ImagePlus, X, BoxesIcon,
 } from "lucide-react";
+import Link from "next/link";
 import {
   saveFinishedProductCalculation,
   updateFinishedProductCalculation,
@@ -13,7 +15,23 @@ import {
   saveFinishedProductDraft,
   getFinishedProductDraft,
   clearFinishedProductDraft,
+  saveFinishedProductStockRecord,
 } from "@/app/actions/industry";
+
+const UNITS = ["Piece", "Kg", "Liter", "Meter", "Ton", "Box", "Bag", "Bottle", "Other"];
+
+// Read a chosen image file into a base64 data URL. Rejects non-images / >2MB.
+function readImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowed.includes(file.type)) { reject(new Error("Use a JPEG, PNG, GIF or WebP image.")); return; }
+    if (file.size > 2 * 1024 * 1024) { reject(new Error("Image must be under 2MB.")); return; }
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Could not read the image."));
+    reader.readAsDataURL(file);
+  });
+}
 
 type SavedCalc = Awaited<ReturnType<typeof getFinishedProductCalculations>>[number];
 
@@ -28,7 +46,13 @@ interface CustomExpense {
   amount: number;
 }
 
-export default function FinishedProductCalculator() {
+interface FinishedProductCalculatorProps {
+  /** "supermarket" saves calculated products into the Finished Products stock records. */
+  variant?: "industry" | "supermarket";
+}
+
+export default function FinishedProductCalculator({ variant = "industry" }: FinishedProductCalculatorProps) {
+  const isSupermarket = variant === "supermarket";
   const [calc, setCalc] = useState({
     purchasePrice: 0,
     transport: 0,
@@ -42,6 +66,12 @@ export default function FinishedProductCalculator() {
 
   const [customExpenses, setCustomExpenses] = useState<CustomExpense[]>([]);
   const [productName, setProductName] = useState("");
+  // supermarket-only: product image + inventory details saved into stock records
+  const [productImage, setProductImage] = useState("");
+  const [imageError, setImageError] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [unit, setUnit] = useState("Piece");
+  const [savedToStock, setSavedToStock] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [savedCalcs, setSavedCalcs] = useState<SavedCalc[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -98,6 +128,13 @@ export default function FinishedProductCalculator() {
     }, 1500);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
   }, [calc, customExpenses, productName]);
+
+  const handleImage = async (file?: File) => {
+    setImageError("");
+    if (!file) return;
+    try { setProductImage(await readImageFile(file)); }
+    catch (err) { setImageError(err instanceof Error ? err.message : "Could not read image."); }
+  };
 
   const handleEdit = (row: SavedCalc) => {
     setCalc({
@@ -278,6 +315,66 @@ export default function FinishedProductCalculator() {
           className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/20 bg-white shadow-sm"
         />
       </div>
+
+      {/* Supermarket: product image + inventory — saved into Finished Product Records */}
+      {isSupermarket && (
+        <section className="rounded-xl border border-[#0097A7]/20 bg-cyan-50/40 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <BoxesIcon className="w-4 h-4 text-[#023E4A]" />
+            <h3 className="font-bold text-[#023E4A] text-sm uppercase tracking-wide">Product Image & Stock</h3>
+          </div>
+          <p className="text-xs text-gray-500 mb-4">
+            Add a photo and how many units are coming in. On Save, this product is recorded in your{" "}
+            <strong>Finished Products Records</strong> (Stock Records), ready to publish to the marketplace.
+          </p>
+          {imageError && (
+            <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {imageError}
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* image picker */}
+            <div className="shrink-0">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Product Image</label>
+              {productImage ? (
+                <div className="relative w-28 h-28 rounded-lg overflow-hidden border border-[#0097A7]/30 group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={productImage} alt="Product preview" className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => setProductImage("")}
+                    className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                    title="Remove image">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <label className="w-28 h-28 flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-[#0097A7]/40 text-[#0097A7] hover:bg-cyan-50 cursor-pointer transition-colors">
+                  <ImagePlus className="w-6 h-6" />
+                  <span className="text-[10px] font-medium">Upload</span>
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={(e) => handleImage(e.target.files?.[0])} />
+                </label>
+              )}
+            </div>
+            {/* quantity + unit */}
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Quantity Coming In</label>
+                <input type="number" min={0} step="any" value={quantity}
+                  onChange={(e) => { setQuantity(e.target.value); setSaveStatus("idle"); }}
+                  placeholder="Units (defaults to 1)"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f]/20" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Unit of Measure</label>
+                <select value={unit} onChange={(e) => setUnit(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f]/20">
+                  {UNITS.map((u) => <option key={u}>{u}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Step 1 */}
       <section className="rounded-xl border border-gray-200 shadow-sm bg-white overflow-hidden">
@@ -610,13 +707,45 @@ export default function FinishedProductCalculator() {
                   const res = editingId
                     ? await updateFinishedProductCalculation(editingId, payload)
                     : await saveFinishedProductCalculation(payload);
+
+                  // Supermarket: also record the incoming finished product into the
+                  // Finished Products stock records (visible on Stock Records), so it
+                  // can be published to the marketplace from there. Only on new saves.
+                  let stockOk = true;
+                  if (res.success && isSupermarket && !editingId) {
+                    const qty = parseFloat(quantity) > 0 ? parseFloat(quantity) : 1;
+                    // the price customers pay: actual selling price if set, else recommended
+                    const unitPrice = calc.actualSellingPrice > 0 ? calc.actualSellingPrice : results.recommendedPrice;
+                    const stockRes = await saveFinishedProductStockRecord({
+                      productName: productName || "Untitled product",
+                      quantityProduced: qty,
+                      productionCost: qty * unitPrice,
+                      laborCost: 0,
+                      packagingCost: 0,
+                      transportCost: 0,
+                      otherExpenses: 0,
+                      customExpenses: [],
+                      totalProductionCost: qty * unitPrice,
+                      costPerUnit: unitPrice,
+                      currentStock: qty,
+                      recordDate: new Date().toISOString().split("T")[0],
+                      imageUrl: productImage || undefined,
+                      unitOfMeasure: unit,
+                      lowStockThreshold: 0,
+                      reservedStock: 0,
+                      published: false,
+                    });
+                    stockOk = stockRes.success;
+                  }
+
                   if (res.success) {
                     await loadCalcs();
                     setEditingId(null);
                     await clearFinishedProductDraft();
                     setAutoSaveStatus("idle");
+                    setSavedToStock(isSupermarket && !editingId && stockOk);
                   }
-                  setSaveStatus(res.success ? "saved" : "error");
+                  setSaveStatus(res.success && stockOk ? "saved" : "error");
                 }}
                 className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[#1e3a5f] text-white hover:bg-[#16304f]"
               >
@@ -632,9 +761,18 @@ export default function FinishedProductCalculator() {
                 </button>
               )}
               {saveStatus === "saved" && (
-                <span className="flex items-center gap-1 text-green-700 text-xs font-medium">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> {editingId ? "Updated!" : "Saved!"}
-                </span>
+                savedToStock ? (
+                  <span className="flex items-center gap-1.5 text-green-700 text-xs font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Saved to
+                    <Link href="/supermarket/stock-records" className="underline hover:text-green-800">
+                      Finished Product Records
+                    </Link>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-green-700 text-xs font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {editingId ? "Updated!" : "Saved!"}
+                  </span>
+                )
               )}
               {saveStatus === "error" && (
                 <span className="flex items-center gap-1 text-red-600 text-xs font-medium">
@@ -651,6 +789,11 @@ export default function FinishedProductCalculator() {
                 });
                 setCustomExpenses([]);
                 setProductName("");
+                setProductImage("");
+                setImageError("");
+                setQuantity("");
+                setUnit("Piece");
+                setSavedToStock(false);
                 setSaveStatus("idle");
                 setEditingId(null);
                 setAutoSaveStatus("idle");

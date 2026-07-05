@@ -800,15 +800,21 @@ export async function patchFinishedProductStockRecord(
 }
 
 // Publish / unpublish a finished-product stock record to the public marketplace.
-// Publishing creates (or re-shows) a real Product with category Industry /
-// subcategory finished-products so it appears on the home page and view-products.
-// Unpublishing hides the linked Product but keeps it for re-publishing later.
+// The variant decides where the product is listed:
+//   - industry    → category Industry / subcategory finished-products
+//   - supermarket → category OtherProducts / subcategory supermarket
+// Publishing creates (or re-shows) a real Product; unpublishing hides the linked
+// Product but keeps it for re-publishing later.
 export async function publishFinishedProductToMarketplace(
   recordId: string,
-  publish: boolean
+  publish: boolean,
+  variant: "industry" | "supermarket" = "industry"
 ): Promise<{ success: boolean; published?: boolean; message?: string }> {
   const session = await getUserSession();
   if (!session) return { success: false, message: "Unauthorized" };
+
+  const category = variant === "supermarket" ? "OtherProducts" : "Industry";
+  const subcategory = variant === "supermarket" ? "supermarket" : "finished-products";
 
   const client = getMongoClient();
   try {
@@ -831,12 +837,16 @@ export async function publishFinishedProductToMarketplace(
     if (publish) {
       const image = (record.imageUrl as string | undefined) || undefined;
       if (existing) {
-        // Re-show and refresh the key fields from the current record
+        // Re-show and refresh the key fields from the current record. Category /
+        // subcategory are refreshed too so any previously mis-listed product is
+        // corrected to the right marketplace section on re-publish.
         await prisma.product.update({
           where: { id: existing.id },
           data: {
             title: record.productName as string,
             price: (record.costPerUnit as number) ?? null,
+            category: category as any,
+            subcategory,
             available: true,
             hidden: false,
           },
@@ -848,8 +858,8 @@ export async function publishFinishedProductToMarketplace(
             title: record.productName as string,
             description: `${record.productName as string} — finished product`,
             price: (record.costPerUnit as number) ?? null,
-            category: "Industry" as any,
-            subcategory: "finished-products",
+            category: category as any,
+            subcategory,
             available: true,
             hidden: false,
             user: { connect: { id: session.id } },
@@ -884,6 +894,7 @@ export async function publishFinishedProductToMarketplace(
     revalidatePath("/");
     revalidatePath("/view-products");
     revalidatePath("/industry/finished-products");
+    revalidatePath("/other-products/supermarket");
 
     return { success: true, published: publish };
   } catch (error) {
