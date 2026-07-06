@@ -71,6 +71,7 @@ model User {
   sector    String?
   zone      String?
   products  Product[]
+  marketProducts MarketProduct[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -303,6 +304,32 @@ model Announcement {
   active    Boolean  @default(true) // admin can show/hide without deleting
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Lightweight marketplace listing published by a manager/seller from the
+// supermarket Stock Records page. Only name, price and amount — no images.
+model MarketProduct {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  price     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Order placed by a customer from the public marketplace ("Order now").
+model MarketOrder {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId     String   @db.ObjectId
+  sellerId      String   @db.ObjectId
+  productName   String
+  price         Float
+  quantity      Int      @default(1)
+  customerName  String
+  customerPhone String
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
 }
 
 model Contract {

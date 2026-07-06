@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
+import MarketPublishForm from "@/components/MarketPublishForm";
 import {
   Layers, BoxesIcon, Plus, Trash2, AlertCircle,
   ChevronDown, ChevronRight, ArrowDownCircle, ArrowUpCircle,
@@ -2533,6 +2534,8 @@ export default function StockRecords({ variant = "industry" }: { variant?: "indu
 
   return (
     <div className="space-y-6">
+      <MarketPublishForm />
+
       <div className="rounded-xl overflow-hidden shadow-lg border border-gray-200">
         <div className="bg-slate-800 text-white px-6 py-4">
           <h2 className="text-2xl font-black tracking-widest uppercase">Stock Records</h2>

@@ -224,6 +224,59 @@ export default function AboutUsSection({
           </div>
         </div>
 
+        {/* RWANDA VISITOR & EXPAT CONCIERGE (RVEC) */}
+        <div
+          key={`rvec-${animationKey}`}
+          className={`bg-gradient-to-br from-[#023E4A] to-[#0097A7] rounded-2xl shadow-lg text-white p-6 md:p-10 mb-6 md:mb-8 transition-all duration-1000 ${
+            isVisible
+              ? "animate-fadeInUp animation-delay-800"
+              : "opacity-0 translate-y-[50px]"
+          }`}
+        >
+          <div className="inline-block bg-[#D4A017]/25 text-[#D4A017] px-4 py-2 rounded-full text-[12px] font-semibold mb-4">
+            RWANDA VISITOR &amp; EXPAT CONCIERGE (RVEC)
+          </div>
+          <div className="space-y-4 text-[13px] md:text-sm leading-relaxed text-white/90 max-w-4xl">
+            <p>
+              Rwanda Visitor &amp; Expat Concierge Service (RVEC) is a professional
+              concierge service dedicated to supporting visitors, expatriates, and
+              investors throughout their journey in Rwanda. We provide trusted
+              assistance with accommodation, transportation, tour guiding,
+              everyday services, coworking spaces, business support, and other
+              essential local needs through a network of verified partners.
+            </p>
+            <p>
+              Our goal is to make Rwanda easier to visit, live in, work in, and
+              invest in by delivering personalized assistance, reliable local
+              connections, and exceptional service that reflects Rwanda's
+              hospitality and investment potential.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-6">
+            <div className="bg-white/10 ring-1 ring-white/15 rounded-xl p-5">
+              <h3 className="text-[#D4A017] font-bold tracking-wide text-sm mb-2">
+                VISION
+              </h3>
+              <p className="text-[13px] md:text-sm leading-relaxed text-white/90">
+                To be Rwanda's most trusted concierge service, making the country
+                the preferred destination for business and investment.
+              </p>
+            </div>
+            <div className="bg-white/10 ring-1 ring-white/15 rounded-xl p-5">
+              <h3 className="text-[#D4A017] font-bold tracking-wide text-sm mb-2">
+                MISSION
+              </h3>
+              <p className="text-[13px] md:text-sm leading-relaxed text-white/90">
+                To simplify the experience of visiting, living, working, and
+                investing in Rwanda by providing personalized concierge services,
+                trusted local connections, and reliable support that promote
+                comfort, confidence, and sustainable growth.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* OUR TEAM */}
         <div
           key={`team-${animationKey}`}

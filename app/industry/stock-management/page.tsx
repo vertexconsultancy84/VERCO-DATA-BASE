@@ -3,6 +3,7 @@
 import Header from "@/components/Header";
 import IndustrySidebar from "@/components/IndustrySidebar";
 import StockInventoryDashboard from "@/components/StockInventoryDashboard";
+import MarketPublishForm from "@/components/MarketPublishForm";
 import Link from "next/link";
 import { Boxes, ArrowLeft } from "lucide-react";
 
@@ -42,7 +43,8 @@ export default function StockManagementPage() {
             </div>
           </div>
 
-          <div className="px-4 py-8 sm:px-6 lg:px-8">
+          <div className="px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+            <MarketPublishForm />
             <StockInventoryDashboard />
           </div>
         </main>
