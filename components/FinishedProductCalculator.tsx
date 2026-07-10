@@ -316,7 +316,7 @@ export default function FinishedProductCalculator({ variant = "industry" }: Fini
         />
       </div>
 
-      {/* Supermarket: product image + inventory — saved into Finished Product Records */}
+      {/* Supermarket: product image + inventory — saved into Item Management */}
       {isSupermarket && (
         <section className="rounded-xl border border-[#0097A7]/20 bg-cyan-50/40 p-5">
           <div className="flex items-center gap-2 mb-3">
@@ -325,7 +325,7 @@ export default function FinishedProductCalculator({ variant = "industry" }: Fini
           </div>
           <p className="text-xs text-gray-500 mb-4">
             Add a photo and how many units are coming in. On Save, this product is recorded in your{" "}
-            <strong>Finished Products Records</strong> (Stock Records), ready to publish to the marketplace.
+            <strong>Item Management</strong> (Stock Records), ready to publish to the marketplace.
           </p>
           {imageError && (
             <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
@@ -765,7 +765,7 @@ export default function FinishedProductCalculator({ variant = "industry" }: Fini
                   <span className="flex items-center gap-1.5 text-green-700 text-xs font-medium">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Saved to
                     <Link href="/supermarket/stock-records" className="underline hover:text-green-800">
-                      Finished Product Records
+                      Item Management
                     </Link>
                   </span>
                 ) : (

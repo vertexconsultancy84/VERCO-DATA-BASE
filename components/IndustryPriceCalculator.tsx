@@ -9,8 +9,12 @@ import {
   getMyIndustryStock,
   getRawMaterialRecords,
   saveFinishedProductStockRecord,
+  getItemNames,
+  upsertItemManagementProducts,
+  consumeRawMaterialStock,
+  getStockMovements,
 } from "@/app/actions/industry";
-import type { StockItemData, RawMaterialRecord } from "@/app/actions/industry";
+import type { StockItemData, RawMaterialRecord, ItemName, StockMovement } from "@/app/actions/industry";
 
 interface FeedItem {
   id: string;
@@ -61,15 +65,23 @@ export default function IndustryPriceCalculator({
 }: IndustryPriceCalculatorProps) {
   // ── Processed Details ──────────────────────────────────────────
   const [rawMaterialName, setRawMaterialName] = useState("");
-  // the finished product's own name (typed by the manager); falls back to the
-  // combined raw-material name when left blank
+  // the finished product's own name — selected from the names registered in
+  // Item Management; falls back to the combined raw-material name when unset
   const [productName, setProductName] = useState("");
+  // registered item names to pick from (managed under Item Management)
+  const [itemNames, setItemNames] = useState<ItemName[]>([]);
 
   // ── Raw material totals (from the Raw Material Calculator records) ──
   // Multiple records can be combined to form one finished product.
   const [rawRecords, setRawRecords] = useState<RawMaterialRecord[]>([]);
+  // stock IN/OUT movements — folded into each material's available stock so the
+  // calculator matches the Raw Material Calculator's "Current Stock" figure
+  const [rawMovements, setRawMovements] = useState<StockMovement[]>([]);
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
   const [recordSearch, setRecordSearch] = useState("");
+  // how much of each selected raw material is used to make this product,
+  // keyed by record id. Defaults to the material's full available stock.
+  const [usedQtys, setUsedQtys] = useState<Record<string, number>>({});
 
   // ── Extra manual feeds ─────────────────────────────────────────
   const [extraFeeds, setExtraFeeds] = useState<FeedItem[]>([]);
@@ -104,6 +116,8 @@ export default function IndustryPriceCalculator({
   // ── Save state ─────────────────────────────────────────────────
   const [calcSaveState, setCalcSaveState] = useState<SaveState>("idle");
   const [stockSaveState, setStockSaveState] = useState<SaveState>("idle");
+  // notice shown when a saved product was already present in Item Management
+  const [stockNotice, setStockNotice] = useState<string | null>(null);
   // per-row state for "Save to finished products" (keyed by "auto" or item id)
   const [finishedSaveState, setFinishedSaveState] = useState<Record<string, SaveState>>({});
   // "Save to finished products" modal — collects details + image before saving
@@ -143,13 +157,51 @@ export default function IndustryPriceCalculator({
     });
   }, []);
 
-  // ── Load saved Raw Material Calculator records to pick totals from ──
+  // ── Load saved Raw Material Calculator records + movements to pick totals from ──
+  // Refetch when the window regains focus so restocks done in the Raw Material
+  // Calculator show up here without a manual reload.
   useEffect(() => {
-    getRawMaterialRecords().then(setRawRecords);
+    const loadRaw = () => {
+      getRawMaterialRecords().then(setRawRecords);
+      getStockMovements().then(setRawMovements);
+    };
+    loadRaw();
+    window.addEventListener("focus", loadRaw);
+    return () => window.removeEventListener("focus", loadRaw);
+  }, []);
+
+  // ── Load registered item names (product name dropdown) ─────────
+  useEffect(() => {
+    getItemNames().then(setItemNames);
   }, []);
 
   // ── Picking records combines their totals into the raw material feed ──
   const selectedRecords = rawRecords.filter((r) => selectedRecordIds.includes(r.id));
+
+  // ── Per-material usage helpers (used vs remaining stock, for management) ──
+  // Net stock movement (IN − OUT) per raw material record, so restocks recorded
+  // as Stock IN in the Raw Material Calculator raise the available amount here.
+  const netMovementByRecord = rawMovements.reduce<Record<string, number>>((acc, m) => {
+    if (m.type !== "raw") return acc;
+    acc[m.recordId] = (acc[m.recordId] ?? 0) + (m.movement === "in" ? m.quantity : -m.quantity);
+    return acc;
+  }, {});
+  // Available = purchased quantity + net stock movements — matches the Raw
+  // Material Calculator's "Current Stock" column exactly.
+  const availableOf = (r: RawMaterialRecord) =>
+    Math.max(0, r.quantityPurchased + (netMovementByRecord[r.id] ?? 0));
+  const unitCostOf = (r: RawMaterialRecord) =>
+    r.costPerUnit > 0 ? r.costPerUnit : r.quantityPurchased > 0 ? r.totalCost / r.quantityPurchased : 0;
+  // Used qty defaults to the whole available stock until the manager edits it.
+  const usedOf = (r: RawMaterialRecord) => {
+    const v = usedQtys[r.id];
+    return v === undefined ? availableOf(r) : v;
+  };
+  const remainingOf = (r: RawMaterialRecord) => availableOf(r) - usedOf(r);
+  // Cost contributed by a material = its unit cost × the quantity actually used.
+  const costOf = (r: RawMaterialRecord) => unitCostOf(r) * usedOf(r);
+  const setUsedQty = (id: string, qty: number) =>
+    setUsedQtys((prev) => ({ ...prev, [id]: Number.isFinite(qty) && qty >= 0 ? qty : 0 }));
   // filter the pick list by the search term so a long list stays manageable
   const visibleRecords = rawRecords.filter((r) =>
     r.materialName.toLowerCase().includes(recordSearch.trim().toLowerCase())
@@ -169,7 +221,7 @@ export default function IndustryPriceCalculator({
   // ── Derived values ─────────────────────────────────────────────
   // The raw material line is the combined total cost of the selected records
   // (each already includes purchase price, tax, transport and other expenses).
-  const materialTotal = selectedRecords.reduce((s, r) => s + r.totalCost, 0);
+  const materialTotal = selectedRecords.reduce((s, r) => s + costOf(r), 0);
   const autoFeedPrice = materialTotal;
   const autoFeedName = rawMaterialName || "Raw material";
   // Expenses (taxes, commission, labour, transport…) are accounted for in the
@@ -272,13 +324,73 @@ export default function IndustryPriceCalculator({
       })),
     ];
     const res = await saveIndustryStock(items);
+
+    // Also push each named product into Item Management, attaching the photo
+    // registered for that name so it shows up there with its image. Each save
+    // counts as one unit made (quantity 1, then 2, …).
+    const imageByName = new Map(
+      itemNames.map((n) => [n.name.toLowerCase(), n.imageUrl])
+    );
+    const products = [
+      ...(autoStockEntry
+        ? [{
+            productName: autoStockEntry.name,
+            costPerUnit: autoStockEntry.newValue > 0 ? autoStockEntry.newValue : autoStockEntry.currentValue,
+          }]
+        : []),
+      ...stockItems.map((s) => ({
+        productName: s.name,
+        costPerUnit: s.newValue > 0 ? s.newValue : s.currentValue,
+      })),
+    ]
+      .filter((p) => p.productName.trim() !== "")
+      .map((p) => ({
+        ...p,
+        imageUrl: imageByName.get(p.productName.trim().toLowerCase()) || undefined,
+      }));
+
+    let existed: string[] = [];
+    if (products.length > 0) {
+      const up = await upsertItemManagementProducts(products);
+      existed = up.existed ?? [];
+    }
+
+    // Deduct the quantities used from each raw material's available stock so the
+    // remaining amount carries over (50 → 44 → … → 0), then reload the records.
+    const consumptions = selectedRecords
+      .map((r) => ({ id: r.id, quantity: usedOf(r) }))
+      .filter((c) => c.quantity > 0);
+    if (consumptions.length > 0) {
+      await consumeRawMaterialStock(consumptions);
+      const [fresh, moves] = await Promise.all([getRawMaterialRecords(), getStockMovements()]);
+      setRawRecords(fresh);
+      setRawMovements(moves);
+      // reset the used inputs for consumed rows so they show the new remaining
+      setUsedQtys((prev) => {
+        const nextMap = { ...prev };
+        for (const c of consumptions) nextMap[c.id] = 0;
+        return nextMap;
+      });
+    }
+
     setStockSaveState(res.success ? "saved" : "error");
+    // Tell the manager if any product was already in Item Management.
+    if (existed.length > 0) {
+      setStockNotice(
+        `${existed.join(", ")} already exist${existed.length > 1 ? "" : "s"} in Item Management — its quantity was increased.`
+      );
+      setTimeout(() => setStockNotice(null), 6000);
+    }
     setTimeout(() => setStockSaveState("idle"), 3000);
   };
 
   // ── Open the "Save to Finished Products" modal for a product row ─
   const openFinishedModal = (rowKey: string, name: string, unitValue: number) => {
     const suggested = qtyProduced || qtyProducedBoxes || 0;
+    // Prefill the photo from the matching registered item name, if it has one.
+    const registered = itemNames.find(
+      (n) => n.name.toLowerCase() === name.trim().toLowerCase()
+    );
     setFinishedModalError("");
     setFinishedModal({
       rowKey,
@@ -286,7 +398,7 @@ export default function IndustryPriceCalculator({
       quantity: suggested > 0 ? String(suggested) : "",
       unit: "Piece",
       costPerUnit: unitValue > 0 ? String(unitValue) : "",
-      imageUrl: "",
+      imageUrl: registered?.imageUrl || "",
     });
   };
 
@@ -302,7 +414,7 @@ export default function IndustryPriceCalculator({
     }
   };
 
-  // ── Save the modal's product into the Finished Product Records ──
+  // ── Save the modal's product into Item Management (stock records) ──
   // The chosen quantity becomes the finished product's incoming (produced) stock.
   const confirmFinishedSave = async () => {
     if (!finishedModal) return;
@@ -357,7 +469,7 @@ export default function IndustryPriceCalculator({
             ? "bg-red-100 text-red-600"
             : "bg-teal-600 text-white hover:bg-teal-700"
         }`}
-        title="Add image & save to Finished Product Records"
+        title="Add image & save to Item Management"
       >
         {state === "saved" ? <><CheckCircle className="w-3.5 h-3.5" /> Saved</>
           : <><ImagePlus className="w-3.5 h-3.5" /> Add image</>}
@@ -387,7 +499,7 @@ export default function IndustryPriceCalculator({
     // 2 — Save calculation to DB
     const calcRes = await saveIndustryCalculation({
       rawMaterialName: rawMaterialName,
-      feedQuantity: selectedRecords.reduce((s, r) => s + r.quantityPurchased, 0),
+      feedQuantity: selectedRecords.reduce((s, r) => s + usedOf(r), 0),
       pricePerUnit: 0,
       autoFeedPrice,
       extraFeeds,
@@ -433,95 +545,190 @@ export default function IndustryPriceCalculator({
     const light: [number, number, number] = [240, 244, 248];
     const white: [number, number, number] = [255, 255, 255];
     const frw = (n: number) => "Frw " + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const BOTTOM = 285;
 
-    // Header
+    let y = 30;
+    // add a new page if the next block won't fit
+    const ensure = (need: number) => { if (y + need > BOTTOM) { doc.addPage(); y = 20; } };
+
+    // Header (drawn on the first page)
     doc.setFillColor(...navy); doc.rect(0, 0, PW, 22, "F");
     doc.setTextColor(...white); doc.setFontSize(14); doc.setFont("helvetica", "bold");
-    doc.text("INDUSTRY PRODUCTS PRICE LIST", M, 14);
+    doc.text("INDUSTRY PRODUCT COST REPORT", M, 14);
     doc.setFontSize(7); doc.setFont("helvetica", "normal");
     doc.text(`Generated: ${new Date().toLocaleString()}`, PW - M, 14, { align: "right" });
 
-    let y = 30;
+    const sectionTitle = (t: string) => {
+      ensure(10);
+      doc.setTextColor(...navy); doc.setFontSize(10); doc.setFont("helvetica", "bold");
+      doc.text(t, M, y); y += 5;
+    };
 
-    // Calculation summary
-    doc.setTextColor(...navy); doc.setFontSize(10); doc.setFont("helvetica", "bold");
-    doc.text("Calculation Summary", M, y); y += 5;
+    // key / value block
+    const kvBlock = (rows: [string, string][]) => {
+      const col1W = 65;
+      rows.forEach(([label, value], i) => {
+        ensure(6.5);
+        if (i % 2 === 0) { doc.setFillColor(...light); doc.rect(M, y, CW, 6.5, "F"); }
+        doc.setTextColor(80, 80, 80); doc.setFontSize(7); doc.setFont("helvetica", "normal");
+        doc.text(label, M + 2, y + 4.5);
+        doc.setTextColor(30, 30, 30); doc.setFont("helvetica", "bold");
+        doc.text(value, M + col1W + 2, y + 4.5);
+        y += 6.5;
+      });
+      y += 5;
+    };
 
-    const summaryRows: [string, string][] = [
-      ["Product", resolvedProductName || "—"],
-      ["Raw Materials", rawMaterialName || "—"],
-      ["Raw Material Total", frw(materialTotal)],
-      ["Total Feeds Price", frw(feedsTotal)],
-      ["Total Cost", frw(totalFeedsPrice)],
-      ["QTY Produced (boxes)", qtyProducedBoxes > 0 ? qtyProducedBoxes.toLocaleString() : "—"],
-      ["QTY Produced (units)", qtyProduced > 0 ? qtyProduced.toLocaleString() : "—"],
-      ["Desired Profit", desiredProfit > 0 ? frw(desiredProfit) : "—"],
-      ["Sales Min Price / Box", frw(salesMinPriceBox)],
-      ["Sales Min Price / Pcs", frw(salesMinPricePcs)],
-      ["New Price / Box", frw(newPriceBox)],
-      ["New Price / Unit", frw(newPriceUnit)],
-    ];
-
-    const col1W = 60, col2W = CW - col1W;
-    summaryRows.forEach(([label, value], i) => {
-      if (i % 2 === 0) { doc.setFillColor(...light); doc.rect(M, y, CW, 6.5, "F"); }
-      doc.setTextColor(80, 80, 80); doc.setFontSize(7); doc.setFont("helvetica", "normal");
-      doc.text(label, M + 2, y + 4.5);
-      doc.setTextColor(30, 30, 30); doc.setFont("helvetica", "bold");
-      doc.text(value, M + col1W + 2, y + 4.5);
-      y += 6.5;
-    });
-    y += 8;
-
-    // Products in stock table
-    doc.setTextColor(...navy); doc.setFontSize(10); doc.setFont("helvetica", "bold");
-    doc.text("List of Products in Stock", M, y); y += 5;
-
-    const heads = ["#", "Product Name", "Current Value", "New Value", "Type"];
-    const colW = [8, CW - 8 - 40 - 40 - 20, 40, 40, 20];
+    // generic table
     const RH = 7;
+    const drawTable = (heads: string[], colW: number[], rows: string[][], aligns: ("left" | "right")[]) => {
+      const drawHead = () => {
+        doc.setFillColor(...navy); doc.rect(M, y, CW, RH, "F");
+        doc.setTextColor(...white); doc.setFontSize(7); doc.setFont("helvetica", "bold");
+        let cx = M + 2;
+        heads.forEach((h, i) => {
+          const a = aligns[i];
+          doc.text(h, a === "right" ? cx + colW[i] - 4 : cx, y + RH - 2, a === "right" ? { align: "right" } : undefined);
+          cx += colW[i];
+        });
+        y += RH;
+      };
+      ensure(RH * 2); drawHead();
+      rows.forEach((row, ri) => {
+        if (y + RH > BOTTOM) { doc.addPage(); y = 20; drawHead(); }
+        if (ri % 2 === 0) { doc.setFillColor(...light); doc.rect(M, y, CW, RH, "F"); }
+        doc.setTextColor(30, 30, 30); doc.setFontSize(7); doc.setFont("helvetica", "normal");
+        let cx = M + 2;
+        row.forEach((cell, ci) => {
+          const a = aligns[ci];
+          doc.text(String(cell), a === "right" ? cx + colW[ci] - 4 : cx, y + RH - 2, a === "right" ? { align: "right" } : undefined);
+          cx += colW[ci];
+        });
+        y += RH;
+      });
+    };
 
-    // Header row
-    doc.setFillColor(...navy); doc.rect(M, y, CW, RH, "F");
-    doc.setTextColor(...white); doc.setFontSize(7); doc.setFont("helvetica", "bold");
-    let cx = M + 2;
-    heads.forEach((h, i) => { doc.text(h, cx, y + RH - 1.5); cx += colW[i]; });
-    y += RH;
+    // navy total bar: label left, value right
+    const totalBar = (label: string, value: string) => {
+      ensure(RH);
+      doc.setFillColor(...navy); doc.rect(M, y, CW, RH, "F");
+      doc.setTextColor(...white); doc.setFontSize(7); doc.setFont("helvetica", "bold");
+      doc.text(label, M + 2, y + RH - 2);
+      doc.text(value, M + CW - 4, y + RH - 2, { align: "right" });
+      y += RH + 5;
+    };
 
-    // All stock rows
+    // 1 ── Product details
+    sectionTitle("Product Details");
+    kvBlock([
+      ["Product name", resolvedProductName || "—"],
+      ["Raw materials", rawMaterialName || "—"],
+      ["Materials selected", String(selectedRecords.length)],
+    ]);
+
+    // 2 ── Raw materials used (quantities used vs remaining)
+    sectionTitle("Raw Materials Used");
+    if (selectedRecords.length === 0) {
+      doc.setTextColor(120, 120, 120); doc.setFontSize(8); doc.setFont("helvetica", "italic");
+      ensure(8); doc.text("No raw materials selected.", M + 2, y + 4); y += 10;
+    } else {
+      const rmHeads = ["#", "Raw Material", "Available", "Used", "Remaining", "Unit Cost", "Cost"];
+      const rmColW = [8, 52, 26, 24, 26, 22, CW - 8 - 52 - 26 - 24 - 26 - 22];
+      const rmAligns: ("left" | "right")[] = ["left", "left", "right", "right", "right", "right", "right"];
+      const rmRows = selectedRecords.map((r, i) => [
+        String(i + 1),
+        r.materialName,
+        `${availableOf(r).toLocaleString()} ${r.unit}`,
+        `${usedOf(r).toLocaleString()} ${r.unit}`,
+        `${remainingOf(r).toLocaleString()} ${r.unit}`,
+        frw(unitCostOf(r)),
+        frw(costOf(r)),
+      ]);
+      drawTable(rmHeads, rmColW, rmRows, rmAligns);
+      totalBar("Total raw material cost", frw(materialTotal));
+    }
+
+    // 3 ── Extra feeds (if any)
+    if (extraFeeds.length > 0) {
+      sectionTitle("Extra Feeds");
+      const fHeads = ["#", "Feed", "Price"];
+      const fColW = [8, CW - 8 - 45, 45];
+      const fAligns: ("left" | "right")[] = ["left", "left", "right"];
+      const fRows = extraFeeds.map((f, i) => [String(i + 1), f.name || "—", frw(f.price || 0)]);
+      drawTable(fHeads, fColW, fRows, fAligns);
+      totalBar("Extra feeds sub-total", frw(extraFeedsTotal));
+    }
+
+    // 4 ── Cost summary
+    sectionTitle("Cost Summary");
+    kvBlock([
+      ["Processed value", frw(processedValue)],
+      ["Raw material total", frw(materialTotal)],
+      ["Extra feeds total", frw(extraFeedsTotal)],
+      ["Feeds sub-total", frw(feedsTotal)],
+      ["Total feeds (Product cost)", frw(totalFeedsPrice)],
+    ]);
+
+    // 5 ── Production & pricing
+    sectionTitle("Production & Pricing");
+    kvBlock([
+      ["Total QTY", totalQty > 0 ? totalQty.toLocaleString() : "—"],
+      ["QTY produced (boxes)", qtyProducedBoxes > 0 ? qtyProducedBoxes.toLocaleString() : "—"],
+      ["QTY produced (units)", qtyProduced > 0 ? qtyProduced.toLocaleString() : "—"],
+      ["Desired profit", desiredProfit > 0 ? frw(desiredProfit) : "—"],
+      ["Sales min price / box", frw(salesMinPriceBox)],
+      ["Sales min price / pcs", frw(salesMinPricePcs)],
+      ["Profit / box", frw(profitPerBox)],
+      ["Profit / unit", frw(profitPerUnit)],
+      ["New price / box", frw(newPriceBox)],
+      ["New price / unit", frw(newPriceUnit)],
+    ]);
+
+    // 6 ── Products in stock
+    sectionTitle("List of Products in Stock");
+    const stHeads = ["#", "Product Name", "Current Value", "New Value", "Type"];
+    const stColW = [8, CW - 8 - 40 - 40 - 20, 40, 40, 20];
+    const stAligns: ("left" | "right")[] = ["left", "left", "right", "right", "left"];
     const allItems = [
       ...(autoStockEntry ? [{ name: autoStockEntry.name, currentValue: autoStockEntry.currentValue, newValue: autoStockEntry.newValue, isAuto: true }] : []),
       ...stockItems.map(s => ({ name: s.name, currentValue: s.currentValue, newValue: s.newValue, isAuto: false })),
     ];
-
-    allItems.forEach((item, i) => {
-      if (i % 2 === 0) { doc.setFillColor(...light); doc.rect(M, y, CW, RH, "F"); }
-      doc.setTextColor(30, 30, 30); doc.setFontSize(7); doc.setFont("helvetica", "normal");
-      cx = M + 2;
-      [
+    if (allItems.length === 0) {
+      doc.setTextColor(120, 120, 120); doc.setFontSize(8); doc.setFont("helvetica", "italic");
+      ensure(8); doc.text("No products in stock yet.", M + 2, y + 4); y += 10;
+    } else {
+      const stRows = allItems.map((item, i) => [
         String(i + 1),
         item.name || "—",
         item.currentValue > 0 ? frw(item.currentValue) : "—",
         item.newValue > 0 ? frw(item.newValue) : "—",
         item.isAuto ? "Auto" : "Manual",
-      ].forEach((cell, ci) => { doc.text(cell, cx, y + RH - 1.5); cx += colW[ci]; });
-      y += RH;
-    });
+      ]);
+      drawTable(stHeads, stColW, stRows, stAligns);
+      // totals row for the stock table
+      ensure(RH);
+      doc.setFillColor(...navy); doc.rect(M, y, CW, RH, "F");
+      doc.setTextColor(...white); doc.setFontSize(7); doc.setFont("helvetica", "bold");
+      let cx = M + 2;
+      const totalsCells = ["", "Total", frw(stockCurrentTotal), frw(stockNewTotal), ""];
+      totalsCells.forEach((cell, ci) => {
+        const a = stAligns[ci];
+        doc.text(cell, a === "right" ? cx + stColW[ci] - 4 : cx, y + RH - 2, a === "right" ? { align: "right" } : undefined);
+        cx += stColW[ci];
+      });
+      y += RH + 5;
+    }
 
-    // Totals row
-    doc.setFillColor(...navy); doc.rect(M, y, CW, RH, "F");
-    doc.setTextColor(...white); doc.setFontSize(7); doc.setFont("helvetica", "bold");
-    cx = M + 2;
-    ["", "Total", frw(stockCurrentTotal), frw(stockNewTotal), ""].forEach((cell, ci) => {
-      doc.text(cell, cx, y + RH - 1.5); cx += colW[ci];
-    });
-    y += RH + 8;
+    // Footer on every page
+    const pages = doc.getNumberOfPages();
+    for (let p = 1; p <= pages; p++) {
+      doc.setPage(p);
+      doc.setFontSize(7); doc.setTextColor(150, 150, 150); doc.setFont("helvetica", "normal");
+      doc.text("Vertex Industry Management System", M, 292);
+      doc.text(`Page ${p} of ${pages}`, PW - M, 292, { align: "right" });
+    }
 
-    // Footer
-    doc.setFontSize(7); doc.setTextColor(150, 150, 150);
-    doc.text("Vertex Industry Management System", M, 290);
-
-    doc.save("products-price-list.pdf");
+    doc.save(`${(resolvedProductName || "product").replace(/[^\w-]+/g, "-").toLowerCase()}-cost-report.pdf`);
   };
 
   const SaveIcon = ({ state }: { state: SaveState }) => {
@@ -558,16 +765,27 @@ export default function IndustryPriceCalculator({
               <div className="px-4 py-2 font-bold text-purple-900 text-sm">Processed Details</div>
               <div className="px-4 py-2 text-gray-500 text-sm">Insert your data</div>
             </div>
-            {/* Finished product name — typed by the manager */}
+            {/* Finished product name — selected from the names registered in Item Management */}
             <div className="grid grid-cols-2 border-t border-gray-100 items-center">
               <span className="px-4 py-2 text-sm text-gray-600">Product name</span>
-              <input
-                type="text"
-                className="px-3 py-2 text-sm border-l border-gray-100 outline-none w-full focus:bg-blue-50"
-                placeholder={rawMaterialName || "e.g. Mango Juice"}
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-              />
+              {itemNames.length === 0 ? (
+                <span className="px-3 py-2 text-xs text-gray-400 italic border-l border-gray-100">
+                  No item names yet — register them under Item Management.
+                </span>
+              ) : (
+                <select
+                  className="px-3 py-2 text-sm border-l border-gray-100 outline-none w-full bg-white focus:bg-blue-50"
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                >
+                  <option value="">
+                    {rawMaterialName ? `Use raw material name (${rawMaterialName})` : "Select a product…"}
+                  </option>
+                  {itemNames.map((n) => (
+                    <option key={n.id} value={n.name}>{n.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
             {/* Raw materials — combine one or more saved Raw Material Calculator records */}
             <div className="border-t border-gray-100 px-4 py-3">
@@ -585,26 +803,83 @@ export default function IndustryPriceCalculator({
                 </p>
               ) : (
                 <>
-                  {/* Selected materials stay pinned as removable chips */}
+                  {/* Selected materials — usage table: how much is used and what remains */}
                   {selectedRecords.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {selectedRecords.map((r) => (
-                        <span
-                          key={r.id}
-                          className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[11px] font-medium px-2 py-1 rounded-full"
-                        >
-                          <span className="truncate max-w-[9rem]" title={r.materialName}>{r.materialName}</span>
-                          <button
-                            type="button"
-                            onClick={() => toggleRecord(r.id)}
-                            className="text-emerald-600 hover:text-emerald-900 shrink-0"
-                            title="Remove"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
+                    <div className="mb-2 overflow-x-auto rounded-lg border border-emerald-200">
+                      <table className="w-full text-[11px] min-w-[420px]">
+                        <thead className="bg-emerald-50 text-emerald-800">
+                          <tr>
+                            <th className="text-left font-semibold px-2 py-1.5">Raw material</th>
+                            <th className="text-right font-semibold px-2 py-1.5">Available</th>
+                            <th className="text-center font-semibold px-2 py-1.5">Qty used</th>
+                            <th className="text-right font-semibold px-2 py-1.5">Remaining</th>
+                            <th className="text-right font-semibold px-2 py-1.5">Cost</th>
+                            <th className="px-1 py-1.5" />
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-emerald-100">
+                          {selectedRecords.map((r) => {
+                            const avail = availableOf(r);
+                            const used = usedOf(r);
+                            const rem = remainingOf(r);
+                            return (
+                              <tr key={r.id} className="bg-white">
+                                <td className="px-2 py-1.5 font-medium text-gray-800 truncate max-w-[9rem]" title={r.materialName}>
+                                  {r.materialName}
+                                </td>
+                                <td className="px-2 py-1.5 text-right whitespace-nowrap">
+                                  <span className={avail <= 0 ? "text-red-600 font-semibold" : "text-gray-600"}>
+                                    {avail.toLocaleString()} {r.unit}
+                                  </span>
+                                  {avail <= 0 && (
+                                    <span className="block text-[9px] font-semibold text-red-500 uppercase">Out of stock</span>
+                                  )}
+                                </td>
+                                <td className="px-2 py-1.5">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={used}
+                                    onChange={(e) => setUsedQty(r.id, Number(e.target.value))}
+                                    className="w-20 border border-emerald-300 rounded px-1.5 py-0.5 text-right outline-none focus:ring-1 focus:ring-emerald-400 mx-auto block"
+                                  />
+                                </td>
+                                <td className={`px-2 py-1.5 text-right font-semibold whitespace-nowrap ${rem < 0 ? "text-red-600" : "text-emerald-700"}`}>
+                                  {rem.toLocaleString()} {r.unit}
+                                </td>
+                                <td className="px-2 py-1.5 text-right text-gray-700 whitespace-nowrap">
+                                  Frw {costOf(r).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </td>
+                                <td className="px-1 py-1.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleRecord(r.id)}
+                                    className="text-emerald-600 hover:text-red-600"
+                                    title="Remove"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
+                  )}
+                  {/* Warn if any material is used beyond its available stock */}
+                  {selectedRecords.some((r) => remainingOf(r) < 0) && (
+                    <p className="text-[11px] text-red-600 mb-2">
+                      Some materials are used beyond their available stock.
+                    </p>
+                  )}
+                  {/* Prompt to restock any selected material that is finished */}
+                  {selectedRecords.some((r) => availableOf(r) <= 0) && (
+                    <p className="text-[11px] text-red-600 mb-2">
+                      Some materials are out of stock. Increase their quantity in the{" "}
+                      <span className="font-semibold">Raw Material Calculator</span> (Restock) to use them again.
+                    </p>
                   )}
 
                   {/* Search to filter a long list */}
@@ -649,8 +924,8 @@ export default function IndustryPriceCalculator({
                             <span className="font-medium text-gray-800 flex-1 truncate" title={r.materialName}>
                               {r.materialName}
                             </span>
-                            <span className="text-gray-500 whitespace-nowrap">
-                              {r.quantityPurchased.toLocaleString()} {r.unit}
+                            <span className={`whitespace-nowrap ${availableOf(r) <= 0 ? "text-red-500 font-semibold" : "text-gray-500"}`}>
+                              {availableOf(r).toLocaleString()} {r.unit}
                             </span>
                             <span className="font-semibold text-emerald-700 whitespace-nowrap w-24 text-right">
                               Frw {r.totalCost.toLocaleString()}
@@ -726,11 +1001,16 @@ export default function IndustryPriceCalculator({
               selectedRecords.map((r) => (
                 <div key={r.id} className="grid grid-cols-2 border-t border-gray-100 bg-purple-50 items-center">
                   <div className="flex items-center gap-2 px-4 py-2 border-r border-gray-100">
-                    <span className="text-sm text-purple-800 font-medium truncate" title={r.materialName}>{r.materialName}</span>
+                    <span className="text-sm text-purple-800 font-medium truncate" title={r.materialName}>
+                      {r.materialName}
+                      <span className="text-[11px] text-purple-500 font-normal ml-1">
+                        · {usedOf(r).toLocaleString()} {r.unit} used
+                      </span>
+                    </span>
                     <span className="text-[10px] bg-purple-200 text-purple-700 px-1.5 rounded ml-auto shrink-0">auto</span>
                   </div>
                   <span className="px-3 py-2 text-sm font-semibold text-purple-800 text-right">
-                    {r.totalCost.toLocaleString()}
+                    {costOf(r).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
                 </div>
               ))
@@ -1064,6 +1344,13 @@ export default function IndustryPriceCalculator({
               </div>
             </div>
 
+            {/* "Product already exists" notice from the last Save Stock */}
+            {stockNotice && (
+              <div className="border-t border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 shrink-0" /> {stockNotice}
+              </div>
+            )}
+
             <div className="flex bg-gray-50 border-t border-gray-200 text-xs font-semibold text-gray-700">
               <div className="flex-[2] px-3 py-2 border-r border-gray-200">Value total</div>
               <div className="flex-1 px-2 py-2 text-center border-r border-gray-200">Frw {stockCurrentTotal.toLocaleString()}</div>
@@ -1122,7 +1409,7 @@ export default function IndustryPriceCalculator({
         <div className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <PackagePlus className="w-5 h-5" />
-            <h2 className="text-base font-bold">Save to Finished Products</h2>
+            <h2 className="text-base font-bold">Save to Item Management</h2>
           </div>
           <button onClick={() => !finishedModalSaving && setFinishedModal(null)} className="hover:text-gray-200">
             <X className="w-5 h-5" />
@@ -1221,7 +1508,7 @@ export default function IndustryPriceCalculator({
         <div className="px-5 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
           <Button variant="outline" onClick={() => setFinishedModal(null)} disabled={finishedModalSaving}>Cancel</Button>
           <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={confirmFinishedSave} disabled={finishedModalSaving}>
-            {finishedModalSaving ? (<><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving…</>) : "Save to Finished Products"}
+            {finishedModalSaving ? (<><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving…</>) : "Save to Item Management"}
           </Button>
         </div>
       </div>

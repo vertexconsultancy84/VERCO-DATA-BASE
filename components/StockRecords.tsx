@@ -6,13 +6,14 @@ import {
   Layers, BoxesIcon, Plus, Trash2, AlertCircle,
   ChevronDown, ChevronRight, ArrowDownCircle, ArrowUpCircle,
   Clock, TrendingUp, TrendingDown, Pencil, X, Warehouse, Check, Download,
-  ImagePlus, ImageIcon, CheckCircle2, EyeOff, History,
+  ImagePlus, ImageIcon, CheckCircle2, EyeOff, History, PackagePlus,
 } from "lucide-react";
 import {
   getRawMaterialRecords,
   saveRawMaterialRecord,
   updateRawMaterialRecord,
   updateRawMaterialCostPerUnit,
+  restockRawMaterial,
   deleteRawMaterialRecord,
   getFinishedProductStockRecords,
   saveFinishedProductStockRecord,
@@ -493,6 +494,10 @@ function RawMaterialsTab() {
   const [editSaving, setEditSaving] = useState(false);
   // inline cost-per-unit editing: map of recordId → draft string value
   const [cpuDraft, setCpuDraft] = useState<Record<string, string>>({});
+  // inline restock: which record is being restocked + the quantity to add
+  const [restockId, setRestockId] = useState<string | null>(null);
+  const [restockQty, setRestockQty] = useState("");
+  const [restockSaving, setRestockSaving] = useState(false);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   // materials available in the Stock of Materials list, to pick from
   const [stockItems, setStockItems] = useState<RawMaterialStockItem[]>([]);
@@ -535,6 +540,22 @@ function RawMaterialsTab() {
   }, [records, movements]);
 
   const n = (v: string) => parseFloat(v) || 0;
+
+  // Restock a raw material: add the entered quantity back to its available stock
+  // so the price calculator can use it again once it runs out.
+  const handleRestock = async (id: string) => {
+    const qty = parseFloat(restockQty) || 0;
+    if (qty <= 0) return;
+    setRestockSaving(true);
+    const res = await restockRawMaterial(id, qty);
+    setRestockSaving(false);
+    if (res.success && res.quantityPurchased != null) {
+      const nextQty = res.quantityPurchased;
+      setRecords((prev) => prev.map((rec) => (rec.id === id ? { ...rec, quantityPurchased: nextQty } : rec)));
+      setRestockId(null);
+      setRestockQty("");
+    }
+  };
 
   // the stock material currently chosen in the calculator, with its remaining qty
   const selectedStock = stockItems.find((s) => s.id === selectedStockId);
@@ -869,7 +890,14 @@ function RawMaterialsTab() {
                     {(() => {
                       const current = currentStockMap[r.id] ?? r.quantityPurchased;
                       const color = current <= 0 ? "text-red-600" : current < r.quantityPurchased * 0.2 ? "text-amber-600" : "text-emerald-600";
-                      return <td className={`px-3 py-2 text-right font-bold ${color}`}>{current.toLocaleString()}</td>;
+                      return (
+                        <td className={`px-3 py-2 text-right font-bold ${color}`}>
+                          {current.toLocaleString()}
+                          {current <= 0 && (
+                            <span className="block text-[9px] font-semibold text-red-500 uppercase">Out — restock</span>
+                          )}
+                        </td>
+                      );
                     })()}
                     <td className="px-3 py-2"><span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">{r.unit}</span></td>
                     <td className="px-3 py-2 text-right">{frw(r.purchasePrice)}</td>
@@ -907,6 +935,10 @@ function RawMaterialsTab() {
                     <td className="px-3 py-2 text-gray-400 whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</td>
                     <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
+                        <button onClick={() => { setRestockId(restockId === r.id ? null : r.id); setRestockQty(""); setEditingId(null); }}
+                          className="text-emerald-500 hover:text-emerald-700 transition-colors p-1 rounded" title="Restock / increase quantity">
+                          <PackagePlus className="w-3.5 h-3.5" />
+                        </button>
                         <button onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)}
                           className="text-blue-400 hover:text-blue-600 transition-colors p-1 rounded" title="Edit">
                           <Pencil className="w-3.5 h-3.5" />
@@ -918,6 +950,40 @@ function RawMaterialsTab() {
                       </div>
                     </td>
                   </tr>
+
+                  {/* Restock row */}
+                  {restockId === r.id && (
+                    <tr key={`${r.id}-restock`} className="bg-emerald-50 border-b border-emerald-200" onClick={(e) => e.stopPropagation()}>
+                      <td colSpan={15} className="px-6 py-4">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <PackagePlus className="w-4 h-4 text-emerald-700 shrink-0" />
+                          <p className="text-sm font-bold text-emerald-800">Restock {r.materialName}</p>
+                          <span className="text-xs text-gray-500">
+                            Current: {(currentStockMap[r.id] ?? r.quantityPurchased).toLocaleString()} {r.unit}
+                          </span>
+                          <input
+                            type="number" min="0" step="any" value={restockQty}
+                            onChange={(e) => setRestockQty(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleRestock(r.id); }}
+                            placeholder={`Quantity to add (${r.unit})`}
+                            className="border border-emerald-300 rounded-lg px-3 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                            autoFocus
+                          />
+                          <button onClick={() => handleRestock(r.id)} disabled={restockSaving || !(parseFloat(restockQty) > 0)}
+                            className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-60">
+                            {restockSaving ? "Adding…" : "Add stock"}
+                          </button>
+                          <button onClick={() => { setRestockId(null); setRestockQty(""); }}
+                            className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                          {parseFloat(restockQty) > 0 && (
+                            <span className="text-xs text-emerald-700 font-medium">
+                              → New available: {((currentStockMap[r.id] ?? r.quantityPurchased) + parseFloat(restockQty)).toLocaleString()} {r.unit}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
 
                   {/* Edit row */}
                   {editingId === r.id && (
@@ -1342,8 +1408,8 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
 
   const handleDownload = () =>
     downloadTablePDF({
-      title: "Finished Products Records",
-      filename: "finished-products-records",
+      title: "Item Management Records",
+      filename: "item-management-records",
       columns: isSupermarket
         ? [
             { header: "#", width: 6 },
@@ -1417,7 +1483,7 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
       {/* Add form */}
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-teal-50 border border-teal-200 rounded-xl p-5 space-y-5">
-          <h3 className="text-sm font-bold text-teal-900 uppercase tracking-wide">New Finished Product Record</h3>
+          <h3 className="text-sm font-bold text-teal-900 uppercase tracking-wide">New Item Record</h3>
           {error && (
             <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               <AlertCircle className="w-4 h-4 shrink-0" /> {error}
@@ -1613,7 +1679,7 @@ function FinishedProductsTab({ variant = "industry" }: { variant?: "industry" | 
       {records.length === 0 ? (
         <div className="bg-gray-50 rounded-xl p-10 text-center border border-dashed border-gray-300">
           <BoxesIcon className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-          <p className="text-gray-500 text-sm">No finished product records yet. Click "Add Record" to start.</p>
+          <p className="text-gray-500 text-sm">No items yet. Click "Add Record" to start.</p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
@@ -2180,7 +2246,7 @@ function AllMovementsTab({ variant = "industry" }: { variant?: "industry" | "sup
         <div className="bg-gray-50 rounded-xl p-10 text-center border border-dashed border-gray-300">
           <Clock className="w-10 h-10 text-gray-300 mx-auto mb-2" />
           <p className="text-gray-500 text-sm">
-            {isSupermarket ? "No movements found. Add finished product records first." : "No stock records found. Add raw material or finished product records first."}
+            {isSupermarket ? "No movements found. Add items first." : "No stock records found. Add raw material or item records first."}
           </p>
         </div>
       ) : (
@@ -2523,18 +2589,21 @@ export default function StockRecords({ variant = "industry" }: { variant?: "indu
   const allTabs = [
     { id: "materials" as const, label: "Stock of Materials", icon: Warehouse },
     { id: "raw" as const, label: "Raw Material Calculator", icon: Layers },
-    { id: "inventory" as const, label: "Finished Products Records", icon: BoxesIcon },
+    { id: "inventory" as const, label: "Item Management", icon: BoxesIcon },
     { id: "movements" as const, label: "All Movements", icon: Clock },
   ];
 
-  // the supermarket variant has no raw materials, so hide the raw stock & calculator tabs
+  // the supermarket variant has no raw materials, so hide the raw stock & calculator tabs.
+  // industry has its own Item Management section, so hide that tab here.
   const tabs = isSupermarket
     ? allTabs.filter((t) => t.id !== "materials" && t.id !== "raw")
-    : allTabs;
+    : allTabs.filter((t) => t.id !== "inventory");
 
   return (
     <div className="space-y-6">
-      <MarketPublishForm />
+      {/* Industry publishes from Item Management → Publish Product; keep the quick
+          publish form only for the supermarket variant. */}
+      {isSupermarket && <MarketPublishForm />}
 
       <div className="rounded-xl overflow-hidden shadow-lg border border-gray-200">
         <div className="bg-slate-800 text-white px-6 py-4">

@@ -4,11 +4,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Boxes, Settings, RefreshCw, Sparkles, Check,
+  LayoutDashboard, Tag, ShoppingBag,
 } from "lucide-react";
+
+// "Item Management" groups everything under one bar: the overview plus the
+// register-item-name and publish-product forms as a sub-navbar.
+const ITEM_MANAGEMENT_SUB = [
+  { href: "/industry/stock-management", label: "Overview", icon: LayoutDashboard },
+  { href: "/industry/stock-management/register", label: "Register Item Name", icon: Tag },
+  { href: "/industry/stock-management/publish", label: "Publish Product", icon: ShoppingBag },
+] as const;
 
 const NAV = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/industry/stock-management", label: "Finished Products Records", icon: Boxes },
+  {
+    href: "/industry/stock-management",
+    label: "Item Management",
+    icon: Boxes,
+    sub: ITEM_MANAGEMENT_SUB,
+  },
   { href: "/industry/stock-management/settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -40,21 +54,51 @@ export default function IndustrySidebar() {
 
         {/* Nav */}
         <nav className="space-y-1">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href;
+          {NAV.map((item) => {
+            const { href, label, icon: Icon } = item;
+            const sub = "sub" in item ? item.sub : undefined;
+            // parent highlights when the page is the overview or one of its sub-pages
+            const active = sub
+              ? sub.some((s) => s.href === pathname)
+              : pathname === href;
             return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-white/10 text-white border-l-2 border-[#D4A017]"
-                    : "text-cyan-100/70 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                <Icon className={`w-4 h-4 shrink-0 ${active ? "text-[#D4A017]" : ""}`} />
-                {label}
-              </Link>
+              <div key={href}>
+                <Link
+                  href={href}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-white/10 text-white border-l-2 border-[#D4A017]"
+                      : "text-cyan-100/70 hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 shrink-0 ${active ? "text-[#D4A017]" : ""}`} />
+                  {label}
+                </Link>
+
+                {/* Sub-navbar (persistent) */}
+                {sub && (
+                  <div className="ml-5 mt-1 space-y-0.5 border-l border-white/10 pl-3">
+                    {sub.map((s) => {
+                      const sActive = pathname === s.href;
+                      const SIcon = s.icon;
+                      return (
+                        <Link
+                          key={s.href}
+                          href={s.href}
+                          className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                            sActive
+                              ? "bg-white/10 text-white"
+                              : "text-cyan-100/60 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <SIcon className={`w-3.5 h-3.5 shrink-0 ${sActive ? "text-[#D4A017]" : ""}`} />
+                          {s.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>

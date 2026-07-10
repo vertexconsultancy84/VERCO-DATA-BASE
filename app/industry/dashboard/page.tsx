@@ -42,8 +42,8 @@ const SUBCATEGORY_LABELS: Record<string, string> = {
 const STOCK_TOOLS = [
   {
     href: "/industry/stock-management",
-    title: "Finished Products Records",
-    desc: "Live overview of stock levels, alerts and value",
+    title: "Item Management",
+    desc: "Register item names and track stock levels, alerts and value",
     icon: BoxesIcon,
     gradient: "from-[#023E4A] to-[#0097A7]",
   },

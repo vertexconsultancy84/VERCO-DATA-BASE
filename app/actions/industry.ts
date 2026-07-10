@@ -560,6 +560,71 @@ export async function getRawMaterialRecords(): Promise<RawMaterialRecord[]> {
   }
 }
 
+// Deduct the quantities used (in the price calculator) from each raw material
+// record's available stock, clamped at zero. This persists so the remaining
+// amount carries over to the next visit (50 → 44 → … → 0).
+export async function consumeRawMaterialStock(
+  consumptions: { id: string; quantity: number }[]
+): Promise<{ success: boolean; message?: string }> {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    const col = client.db(DB_NAME).collection("RawMaterialStock");
+    for (const c of consumptions) {
+      if (!c.quantity || c.quantity <= 0) continue;
+      const rec = await col.findOne({ _id: new ObjectId(c.id), userId: session.id });
+      if (!rec) continue;
+      const current = Number(rec.quantityPurchased) || 0;
+      const next = Math.max(0, current - c.quantity);
+      await col.updateOne(
+        { _id: new ObjectId(c.id), userId: session.id },
+        { $set: { quantityPurchased: next, currentStock: next } }
+      );
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("consumeRawMaterialStock:", error);
+    return { success: false, message: "Failed to update raw material stock" };
+  } finally {
+    await client.close();
+  }
+}
+
+// Increase a raw material's available quantity when it runs low/out — the
+// inverse of consumeRawMaterialStock. Keeps the cost-per-unit unchanged so the
+// price calculator prices the restocked units at the same rate.
+export async function restockRawMaterial(
+  id: string,
+  addQty: number
+): Promise<{ success: boolean; message?: string; quantityPurchased?: number }> {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+  if (!addQty || addQty <= 0) return { success: false, message: "Enter a quantity to add" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    const col = client.db(DB_NAME).collection("RawMaterialStock");
+    const rec = await col.findOne({ _id: new ObjectId(id), userId: session.id });
+    if (!rec) return { success: false, message: "Record not found" };
+    const newQty = (Number(rec.quantityPurchased) || 0) + addQty;
+    const newStock = (Number(rec.currentStock) || 0) + addQty;
+    await col.updateOne(
+      { _id: new ObjectId(id), userId: session.id },
+      { $set: { quantityPurchased: newQty, currentStock: newStock } }
+    );
+    return { success: true, quantityPurchased: newQty };
+  } catch (error) {
+    console.error("restockRawMaterial:", error);
+    return { success: false, message: "Failed to restock" };
+  } finally {
+    await client.close();
+  }
+}
+
 export async function updateRawMaterialCostPerUnit(id: string, costPerUnit: number) {
   const session = await getUserSession();
   if (!session) return { success: false, message: "Unauthorized" };
@@ -726,6 +791,82 @@ export async function saveFinishedProductStockRecord(
   }
 }
 
+// Save products from the price calculator's stock list into Item Management,
+// keyed by product name (per user). Each save counts as one unit made: a brand
+// new product starts at quantity 1, and every later save of the same product
+// bumps its quantity (2, 3, …). Products that already existed are returned in
+// `existed` so the UI can tell the manager they were already there.
+export interface ItemManagementProductInput {
+  productName: string;
+  costPerUnit: number;
+  imageUrl?: string;
+  unitOfMeasure?: string;
+}
+
+export async function upsertItemManagementProducts(
+  products: ItemManagementProductInput[]
+): Promise<{ success: boolean; message?: string; existed?: string[] }> {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    const col = client.db(DB_NAME).collection("FinishedProductStock");
+    const existed: string[] = [];
+    for (const p of products) {
+      const name = p.productName.trim();
+      if (!name) continue;
+      const costPerUnit = p.costPerUnit || 0;
+      const existing = await col.findOne({ userId: session.id, productName: name });
+
+      if (existing) {
+        // Already in Item Management → one more unit made.
+        const newQty = (Number(existing.quantityProduced) || 0) + 1;
+        const set: Record<string, unknown> = {
+          quantityProduced: newQty,
+          costPerUnit,
+          productionCost: costPerUnit * newQty,
+          totalProductionCost: costPerUnit * newQty,
+        };
+        // keep current on-hand stock in step with the produced count
+        if (existing.currentStock != null) set.currentStock = (Number(existing.currentStock) || 0) + 1;
+        if (p.imageUrl !== undefined) set.imageUrl = p.imageUrl || null;
+        if (p.unitOfMeasure) set.unitOfMeasure = p.unitOfMeasure;
+        await col.updateOne({ _id: existing._id }, { $set: set });
+        existed.push(name);
+      } else {
+        // First unit of a new product.
+        await col.insertOne({
+          _id: new ObjectId(),
+          userId: session.id,
+          productName: name,
+          quantityProduced: 1,
+          productionCost: costPerUnit,
+          laborCost: 0,
+          packagingCost: 0,
+          transportCost: 0,
+          otherExpenses: 0,
+          customExpenses: [],
+          totalProductionCost: costPerUnit,
+          costPerUnit,
+          imageUrl: p.imageUrl || null,
+          unitOfMeasure: p.unitOfMeasure || "Piece",
+          published: false,
+          createdAt: new Date(),
+        });
+      }
+    }
+    revalidatePath("/industry/stock-management");
+    return { success: true, existed };
+  } catch (error) {
+    console.error("upsertItemManagementProducts:", error);
+    return { success: false, message: "Failed to save products" };
+  } finally {
+    await client.close();
+  }
+}
+
 export async function getFinishedProductStockRecords(): Promise<FinishedProductStockRecord[]> {
   const session = await getUserSession();
   if (!session) return [];
@@ -776,7 +917,7 @@ export async function patchFinishedProductStockRecord(
   data: Partial<
     Pick<
       FinishedProductStockRecord,
-      "imageUrl" | "unitOfMeasure" | "lowStockThreshold" | "reservedStock" | "leadTimeDays" | "published"
+      "productName" | "quantityProduced" | "costPerUnit" | "currentStock" | "imageUrl" | "unitOfMeasure" | "lowStockThreshold" | "reservedStock" | "leadTimeDays" | "published"
     >
   >
 ) {
@@ -919,6 +1060,120 @@ export async function deleteFinishedProductStockRecord(id: string) {
     return { success: true };
   } catch (error) {
     console.error("deleteFinishedProductStockRecord:", error);
+    return { success: false, message: "Failed to delete" };
+  } finally {
+    await client.close();
+  }
+}
+
+// ─── Registered Item Names ─────────────────────────────────────────────────
+// A per-manager list of product/item names registered from Item Management.
+// These names populate the product dropdown in the Industry Price Calculator.
+// Names are unique per user (case-insensitive): saving an existing name only
+// updates it (touches updatedAt) instead of creating a duplicate.
+
+export interface ItemName {
+  id: string;
+  name: string;
+  imageUrl?: string; // product photo (base64 data URL)
+  createdAt: string;
+}
+
+export async function saveItemName(
+  rawName: string,
+  imageUrl?: string
+): Promise<{ success: boolean; created?: boolean; message?: string }> {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const name = rawName.trim();
+  if (!name) return { success: false, message: "Name is required" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    const col = client.db(DB_NAME).collection("ItemName");
+    // Match case-insensitively so "Mango" and "mango" don't both get stored.
+    const existing = await col.findOne({
+      userId: session.id,
+      nameLower: name.toLowerCase(),
+    });
+
+    if (existing) {
+      // Already exists → update only (keep the newly typed casing, touch stamp).
+      // The image is only overwritten when a new one was supplied, so re-saving a
+      // name without picking an image keeps the existing photo.
+      const set: Record<string, unknown> = {
+        name,
+        nameLower: name.toLowerCase(),
+        updatedAt: new Date(),
+      };
+      if (imageUrl !== undefined) set.imageUrl = imageUrl || null;
+      await col.updateOne({ _id: existing._id }, { $set: set });
+      revalidatePath("/industry/stock-management");
+      return { success: true, created: false };
+    }
+
+    await col.insertOne({
+      _id: new ObjectId(),
+      userId: session.id,
+      name,
+      nameLower: name.toLowerCase(),
+      imageUrl: imageUrl || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    revalidatePath("/industry/stock-management");
+    return { success: true, created: true };
+  } catch (error) {
+    console.error("saveItemName:", error);
+    return { success: false, message: "Failed to save name" };
+  } finally {
+    await client.close();
+  }
+}
+
+export async function getItemNames(): Promise<ItemName[]> {
+  const session = await getUserSession();
+  if (!session) return [];
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    const docs = await client
+      .db(DB_NAME)
+      .collection("ItemName")
+      .find({ userId: session.id })
+      .sort({ name: 1 })
+      .toArray();
+    return docs.map((d) => ({
+      id: d._id.toString(),
+      name: d.name as string,
+      imageUrl: (d.imageUrl as string | undefined) ?? undefined,
+      createdAt: (d.createdAt as Date).toISOString(),
+    }));
+  } catch {
+    return [];
+  } finally {
+    await client.close();
+  }
+}
+
+export async function deleteItemName(id: string) {
+  const session = await getUserSession();
+  if (!session) return { success: false, message: "Unauthorized" };
+
+  const client = getMongoClient();
+  try {
+    await client.connect();
+    await client.db(DB_NAME).collection("ItemName").deleteOne({
+      _id: new ObjectId(id),
+      userId: session.id,
+    });
+    revalidatePath("/industry/stock-management");
+    return { success: true };
+  } catch (error) {
+    console.error("deleteItemName:", error);
     return { success: false, message: "Failed to delete" };
   } finally {
     await client.close();

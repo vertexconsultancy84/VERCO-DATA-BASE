@@ -7,11 +7,14 @@ import {
   Search, Boxes, ImageIcon, CheckCircle2, EyeOff,
   ArrowRight, Settings, TrendingUp, TrendingDown, PackageCheck,
   Truck, Clock, PackageX, Snowflake,
+  Pencil, Trash2, X, Loader2,
 } from "lucide-react";
 import {
   getFinishedProductStockRecords,
   getStockMovements,
   publishFinishedProductToMarketplace,
+  patchFinishedProductStockRecord,
+  deleteFinishedProductStockRecord,
   type FinishedProductStockRecord,
   type StockMovement,
 } from "@/app/actions/industry";
@@ -88,7 +91,15 @@ export default function StockInventoryDashboard({ productsSlot }: { productsSlot
 
   // publish / unpublish a finished product (optimistic)
   const [publishing, setPublishing] = useState<string | null>(null);
-  const togglePublish = async (id: string, current: boolean) => {
+  // per-row notice, e.g. "stock is empty" when trying to publish an empty product
+  const [publishNotice, setPublishNotice] = useState<{ id: string; text: string } | null>(null);
+  const togglePublish = async (id: string, current: boolean, stock: number) => {
+    // Block publishing a product that has no stock on hand.
+    if (!current && stock <= 0) {
+      setPublishNotice({ id, text: "Stock is empty — add stock before publishing." });
+      setTimeout(() => setPublishNotice((n) => (n?.id === id ? null : n)), 5000);
+      return;
+    }
     setPublishing(id);
     setFinished((prev) => prev.map((f) => (f.id === id ? { ...f, published: !current } : f)));
     const res = await publishFinishedProductToMarketplace(id, !current);
@@ -97,6 +108,61 @@ export default function StockInventoryDashboard({ productsSlot }: { productsSlot
       setFinished((prev) => prev.map((f) => (f.id === id ? { ...f, published: current } : f)));
     }
     setPublishing(null);
+  };
+
+  // ── Delete a product ───────────────────────────────────────────
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Delete "${name}" from Item Management?`)) return;
+    setDeletingId(id);
+    const res = await deleteFinishedProductStockRecord(id);
+    setDeletingId(null);
+    if (res.success) setFinished((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  // ── Edit a product (name, quantity, unit, cost) ────────────────
+  const [editRow, setEditRow] = useState<{
+    id: string;
+    productName: string;
+    quantityProduced: string;
+    unitOfMeasure: string;
+    costPerUnit: string;
+  } | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEdit = (f: FinishedProductStockRecord) =>
+    setEditRow({
+      id: f.id,
+      productName: f.productName,
+      quantityProduced: String(f.quantityProduced ?? 0),
+      unitOfMeasure: f.unitOfMeasure ?? "Piece",
+      costPerUnit: String(f.costPerUnit ?? 0),
+    });
+
+  const saveEdit = async () => {
+    if (!editRow) return;
+    const name = editRow.productName.trim();
+    if (!name) return;
+    const qty = Number(editRow.quantityProduced) || 0;
+    const cost = Number(editRow.costPerUnit) || 0;
+    setEditSaving(true);
+    const res = await patchFinishedProductStockRecord(editRow.id, {
+      productName: name,
+      quantityProduced: qty,
+      unitOfMeasure: editRow.unitOfMeasure,
+      costPerUnit: cost,
+    });
+    setEditSaving(false);
+    if (res.success) {
+      setFinished((prev) =>
+        prev.map((f) =>
+          f.id === editRow.id
+            ? { ...f, productName: name, quantityProduced: qty, unitOfMeasure: editRow.unitOfMeasure, costPerUnit: cost }
+            : f
+        )
+      );
+      setEditRow(null);
+    }
   };
 
   // total IN / OUT per record id, plus recent sales velocity and last-sale date
@@ -292,7 +358,7 @@ export default function StockInventoryDashboard({ productsSlot }: { productsSlot
               <table className="w-full text-xs border-collapse min-w-[640px]">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500 border-b border-gray-200">
-                    {["Product", "Initial", "Current Stock", "Days Left", "Unit", "Reorder At", "Reserved", "Status"].map((h) => (
+                    {["Product", "Initial", "Current Stock", "Days Left", "Unit", "Reorder At", "Reserved", "Status", "Actions"].map((h) => (
                       <th key={h} className="px-4 py-2.5 text-left font-semibold whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -368,9 +434,9 @@ export default function StockInventoryDashboard({ productsSlot }: { productsSlot
                       <td className="px-4 py-2.5 text-gray-500">{it.reserved.toLocaleString()}</td>
                       <td className="px-4 py-2.5">
                         <button
-                          onClick={() => togglePublish(it.id, !!it.published)}
+                          onClick={() => togglePublish(it.id, !!it.published, it.current)}
                           disabled={publishing === it.id}
-                          title={it.published ? "Click to unpublish" : "Click to publish"}
+                          title={it.published ? "Click to unpublish" : it.current <= 0 ? "Stock is empty" : "Click to publish"}
                           className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors disabled:opacity-50 ${
                             it.published
                               ? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
@@ -380,6 +446,31 @@ export default function StockInventoryDashboard({ productsSlot }: { productsSlot
                           {it.published ? <CheckCircle2 className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                           {publishing === it.id ? "Saving…" : it.published ? "Available" : "Publish"}
                         </button>
+                        {publishNotice?.id === it.id && (
+                          <p className="mt-1 text-[10px] font-medium text-red-600 max-w-[8rem]">{publishNotice.text}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              const rec = finished.find((f) => f.id === it.id);
+                              if (rec) openEdit(rec);
+                            }}
+                            className="p-1.5 rounded hover:bg-amber-100 text-amber-600"
+                            title="Edit"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(it.id, it.name)}
+                            disabled={deletingId === it.id}
+                            className="p-1.5 rounded hover:bg-red-100 text-red-500 disabled:opacity-50"
+                            title="Delete"
+                          >
+                            {deletingId === it.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -492,6 +583,76 @@ export default function StockInventoryDashboard({ productsSlot }: { productsSlot
           </div>
         </div>
       </div>
+
+      {/* Edit product modal */}
+      {editRow && (
+        <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4" onClick={() => !editSaving && setEditRow(null)}>
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-[#023E4A] to-[#0097A7] text-white px-5 py-3 flex items-center justify-between">
+              <h2 className="text-base font-bold">Edit product</h2>
+              <button onClick={() => !editSaving && setEditRow(null)} className="hover:text-gray-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Product name</label>
+                <input
+                  type="text"
+                  value={editRow.productName}
+                  onChange={(e) => setEditRow((r) => (r ? { ...r, productName: e.target.value } : r))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0097A7]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Quantity (initial stock)</label>
+                  <input
+                    type="number" min="0" step="any"
+                    value={editRow.quantityProduced}
+                    onChange={(e) => setEditRow((r) => (r ? { ...r, quantityProduced: e.target.value } : r))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0097A7]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Unit</label>
+                  <input
+                    type="text"
+                    value={editRow.unitOfMeasure}
+                    onChange={(e) => setEditRow((r) => (r ? { ...r, unitOfMeasure: e.target.value } : r))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0097A7]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Cost / value per unit (RWF)</label>
+                <input
+                  type="number" min="0" step="any"
+                  value={editRow.costPerUnit}
+                  onChange={(e) => setEditRow((r) => (r ? { ...r, costPerUnit: e.target.value } : r))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0097A7]"
+                />
+              </div>
+            </div>
+            <div className="px-5 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                onClick={() => setEditRow(null)}
+                disabled={editSaving}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={editSaving || !editRow.productName.trim()}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-[#0097A7] hover:bg-[#023E4A] text-white font-semibold rounded-lg transition-colors disabled:opacity-60"
+              >
+                {editSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : "Save changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
