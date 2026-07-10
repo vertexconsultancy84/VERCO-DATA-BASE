@@ -126,19 +126,9 @@ const services = [
     comments: "Growth",
   },
  
-
-  {
-    id: 13,
-    title: "Logistics & Supply Chain",
-    description:
-      "Professional logistics and supply chain management solutions for businesses.",
-    image: "/images/logistics.png?height=300&width=400",
-    date: "Logistics",
-    comments: "Efficient",
-  },
   
   {
-    id: 14,
+    id: 13,
     title: "Other Services",
     description:
       "Custom services tailored to your specific business needs and requirements.",
